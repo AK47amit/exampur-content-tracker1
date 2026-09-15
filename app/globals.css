@@ -24,3 +24,8 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* Hide Next.js hydration dev overlay */
+nextjs-portal,
+#nextjs-dev-overlay {
+  display: none !important;
+}
