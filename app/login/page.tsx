@@ -93,6 +93,7 @@ export default function LoginPage() {
             type="button"
             onClick={() => {
               setRole('manager');
+              setIsSignUp(false);
               setErrorMsg('');
             }}
             className={`py-2 text-sm font-semibold rounded-lg transition-all ${
@@ -107,19 +108,23 @@ export default function LoginPage() {
 
         {/* Action Title */}
         <h2 className="text-xl font-bold text-white mb-1">
-          {isSignUp
-            ? `Register as ${role === 'employee' ? 'Employee' : 'Manager'}`
-            : `${role === 'employee' ? 'Employee' : 'Manager'} Sign In`}
+          {role === 'manager'
+            ? 'Manager Authentication'
+            : isSignUp
+            ? 'Register as Employee'
+            : 'Employee Sign In'}
         </h2>
         <p className="text-xs text-gray-400 mb-6">
-          Sign in with your official Exampur Google account.
+          {role === 'manager'
+            ? 'Access restricted to official Exampur management accounts.'
+            : 'Sign in with your official Exampur Google account or email.'}
         </p>
 
         {/* Google Workspace OAuth Button */}
         <button
           type="button"
           onClick={handleGoogleLogin}
-          className="w-full bg-white hover:bg-gray-100 text-gray-800 font-semibold text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition shadow-sm mb-6"
+          className="w-full bg-white hover:bg-gray-100 text-gray-800 font-semibold text-sm py-2.5 px-4 rounded-xl flex items-center justify-center gap-2.5 transition shadow-sm mb-6 cursor-pointer"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -142,14 +147,6 @@ export default function LoginPage() {
           Continue with Exampur Google Workspace
         </button>
 
-        {/* Divider */}
-        <div className="relative flex items-center justify-center mb-6">
-          <div className="border-t border-gray-700 w-full"></div>
-          <span className="bg-[#161b22] px-3 text-[10px] font-bold text-gray-500 tracking-wider uppercase absolute">
-            OR WITH PASSWORD
-          </span>
-        </div>
-
         {/* Error Notification */}
         {errorMsg && (
           <div className="mb-4 p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-xs text-red-300 text-center font-medium">
@@ -157,95 +154,115 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Email & Password Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-4">
-          <div>
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              EMAIL ADDRESS
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              placeholder="name@exampur.com"
-              className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722] transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-              PASSWORD
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="••••••••"
-                className="w-full bg-[#0d1117] border border-gray-700 rounded-xl pl-3.5 pr-11 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722] transition"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition focus:outline-none"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+        {/* Employee Only: Password Form & Create Account */}
+        {role === 'employee' && (
+          <>
+            {/* Divider */}
+            <div className="relative flex items-center justify-center mb-6">
+              <div className="border-t border-gray-700 w-full"></div>
+              <span className="bg-[#161b22] px-3 text-[10px] font-bold text-gray-500 tracking-wider uppercase absolute">
+                OR WITH PASSWORD
+              </span>
             </div>
+
+            <form onSubmit={handleEmailAuth} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="name@exampur.com"
+                  className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722] transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                  PASSWORD
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl pl-3.5 pr-11 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722] transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition focus:outline-none"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[#ff5722] hover:bg-[#f4511e] disabled:opacity-50 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition shadow-lg mt-2 cursor-pointer"
+              >
+                {loading
+                  ? 'Verifying...'
+                  : isSignUp
+                  ? 'Create Employee Account'
+                  : 'Sign In with Email'}
+              </button>
+            </form>
+
+            <div className="text-center mt-6">
+              {isSignUp ? (
+                <p className="text-xs text-gray-400">
+                  Already have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(false);
+                      setErrorMsg('');
+                    }}
+                    className="text-[#ff5722] hover:underline font-semibold"
+                  >
+                    Sign In
+                  </button>
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  Need a password-based account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(true);
+                      setErrorMsg('');
+                    }}
+                    className="text-[#ff5722] hover:underline font-semibold"
+                  >
+                    Create Account
+                  </button>
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Manager Note */}
+        {role === 'manager' && (
+          <div className="mt-4 p-3 bg-[#21262d]/50 border border-gray-800 rounded-xl text-center">
+            <p className="text-[11px] text-gray-400 leading-relaxed">
+              Management access is strictly authenticated via Exampur Google Workspace OAuth.
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-[#ff5722] hover:bg-[#f4511e] disabled:opacity-50 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition shadow-lg mt-2 cursor-pointer"
-          >
-            {loading
-              ? 'Verifying...'
-              : isSignUp
-              ? `Create ${role === 'employee' ? 'Employee' : 'Manager'} Account`
-              : 'Sign In with Email'}
-          </button>
-        </form>
-
-        {/* Toggle between Sign In and Sign Up */}
-        <div className="text-center mt-6">
-          {isSignUp ? (
-            <p className="text-xs text-gray-400">
-              Already have an account?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUp(false);
-                  setErrorMsg('');
-                }}
-                className="text-[#ff5722] hover:underline font-semibold"
-              >
-                Sign In
-              </button>
-            </p>
-          ) : (
-            <p className="text-xs text-gray-400">
-              Need a password-based account?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsSignUp(true);
-                  setErrorMsg('');
-                }}
-                className="text-[#ff5722] hover:underline font-semibold"
-              >
-                Create Account
-              </button>
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
