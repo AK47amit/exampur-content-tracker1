@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, KeyRound, Mail, X, Send } from 'lucide-react';
 
 export default function LoginPage() {
   const [role, setRole] = useState<'employee' | 'manager'>('employee');
@@ -12,6 +12,12 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Forgot / Reset Password Modal States
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [sendingReset, setSendingReset] = useState(false);
+  const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
   // 1. Google OAuth with Workspace Domain Hint
   const handleGoogleLogin = async () => {
@@ -24,7 +30,6 @@ export default function LoginPage() {
         },
       };
 
-      // Agar Manager tab selected hai toh Google OAuth ko Exampur workspace domain pe hint/restrict karo
       if (role === 'manager') {
         authOptions.queryParams.hd = 'exampur.com';
       }
@@ -55,7 +60,6 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        // Agar Supabase me email confirmation off hai toh session turant ban jata hai
         if (data?.session) {
           window.location.href = '/';
         } else {
@@ -71,7 +75,6 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        // Hard redirect taaki auth session aur profiles RLS instantly initialize ho jaye
         window.location.href = '/';
       }
     } catch (err: any) {
@@ -81,8 +84,40 @@ export default function LoginPage() {
     }
   };
 
+  // 3. Forgot Password / Reset Link Sender
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetSuccessMsg('');
+    setErrorMsg('');
+
+    if (!forgotEmail.trim()) {
+      alert('Please enter your email address.');
+      return;
+    }
+
+    setSendingReset(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
+        redirectTo: `${window.location.origin}/login`,
+      });
+
+      if (error) throw error;
+
+      setResetSuccessMsg('Password reset instructions & verification link sent to your email!');
+      setTimeout(() => {
+        setShowForgotModal(false);
+        setResetSuccessMsg('');
+        setForgotEmail('');
+      }, 4000);
+    } catch (err: any) {
+      alert('Error: ' + (err.message || 'Could not send reset email'));
+    } finally {
+      setSendingReset(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4 relative">
       <div className="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-2xl p-6 md:p-8 shadow-2xl">
         {/* Top Brand Header */}
         <div className="flex items-center gap-2 mb-6">
@@ -201,9 +236,20 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  PASSWORD
-                </label>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    PASSWORD
+                  </label>
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotModal(true)}
+                      className="text-[11px] text-[#ff5722] hover:underline font-semibold cursor-pointer"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
@@ -288,6 +334,85 @@ export default function LoginPage() {
           </div>
         )}
       </div>
+
+      {/* ================= FORGOT PASSWORD MODAL ================= */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#161b22] border border-gray-800 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden p-6">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#ff5722]/20 text-[#ff5722] rounded-lg">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Reset Password</h3>
+                  <p className="text-[11px] text-gray-400">Receive password reset verification code & link</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotModal(false);
+                  setResetSuccessMsg('');
+                }}
+                className="text-gray-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {resetSuccessMsg && (
+              <div className="mb-4 p-3 bg-emerald-950/60 border border-emerald-800/80 rounded-xl text-xs text-emerald-300 text-center font-medium">
+                {resetSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordReset} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-gray-400 uppercase font-bold tracking-wider mb-1.5">
+                  Registered Email Address *
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 absolute left-3.5 top-3 text-gray-500" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="name@exampur.com"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722]"
+                  />
+                </div>
+              </div>
+
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                We will email you a secure token & link. Click the link to verify your identity and establish a brand new password.
+              </p>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(false);
+                    setResetSuccessMsg('');
+                  }}
+                  className="px-4 py-2 bg-[#21262d] hover:bg-gray-700 text-gray-300 rounded-xl font-medium transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sendingReset}
+                  className="px-5 py-2 bg-[#ff5722] hover:bg-[#f4511e] text-white font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {sendingReset ? 'Sending Verification...' : 'Send Recovery Link'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
