@@ -52,6 +52,7 @@ export default function PortalComponent() {
 
   // Filter State (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
+  // Default to current Month: "YYYY-MM"
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -240,17 +241,34 @@ export default function PortalComponent() {
     }
   }
 
-  // Deadline Status Calculator
+  // Robust Deadline Status Calculator with Fallback
   function getDeadlineBadge(deadline: string | null | undefined) {
-    if (!deadline) return null;
+    if (!deadline || deadline === "null" || deadline.trim() === "") {
+      return <span className="text-slate-600 text-[10px] font-mono italic">No Deadline</span>;
+    }
+    
+    const cleanDate = deadline.slice(0, 10);
     const today = new Date().toLocaleDateString("en-CA");
-    if (deadline < today) {
-      return <span className="bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Overdue: {deadline}</span>;
+
+    if (cleanDate < today) {
+      return (
+        <span className="bg-rose-950/80 text-rose-300 border border-rose-800 text-[10px] font-bold px-2 py-0.5 rounded inline-block">
+          Overdue: {cleanDate}
+        </span>
+      );
     }
-    if (deadline === today) {
-      return <span className="bg-amber-950 text-amber-300 border border-amber-800 text-[10px] font-bold px-1.5 py-0.5 rounded">Due Today: {deadline}</span>;
+    if (cleanDate === today) {
+      return (
+        <span className="bg-amber-950/80 text-amber-300 border border-amber-800 text-[10px] font-bold px-2 py-0.5 rounded inline-block">
+          Due Today: {cleanDate}
+        </span>
+      );
     }
-    return <span className="bg-slate-800 text-slate-300 border border-slate-700 text-[10px] font-mono px-1.5 py-0.5 rounded">Due: {deadline}</span>;
+    return (
+      <span className="bg-blue-950/70 text-blue-300 border border-blue-800 text-[10px] font-mono px-2 py-0.5 rounded inline-block">
+        Due: {cleanDate}
+      </span>
+    );
   }
 
   const myPersonalLogs = useMemo(() => {
@@ -388,7 +406,7 @@ export default function PortalComponent() {
     }
   }
 
-  // 5. Manager Create Task Assignment with Strict Deadline Storing
+  // 5. Manager Create Task Assignment with Sanitized Deadline
   async function handleAssignTask(e: React.FormEvent) {
     e.preventDefault();
     if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
@@ -397,6 +415,8 @@ export default function PortalComponent() {
     }
 
     setAssigning(true);
+    const sanitizedDeadline = assignDeadline && assignDeadline.trim() !== "" ? assignDeadline.trim() : null;
+
     const { error } = await supabase.from("task_assignments").insert([
       {
         assigned_to: assigneeId,
@@ -407,7 +427,7 @@ export default function PortalComponent() {
         subject_book: assignSubject.trim(),
         topic_name: assignTopic.trim(),
         target_quantity: parseInt(assignQty),
-        deadline: assignDeadline ? assignDeadline : null,
+        deadline: sanitizedDeadline,
         status: "assigned"
       }
     ]);
@@ -1018,11 +1038,10 @@ export default function PortalComponent() {
 
                 <div>
                   <label className="text-slate-300 block mb-1 font-medium flex items-center gap-1">
-                    <Calendar className="w-3.5 h-3.5 text-orange-500" /> Deadline Date *
+                    <Calendar className="w-3.5 h-3.5 text-orange-500" /> Deadline Date
                   </label>
                   <input
                     type="date"
-                    required
                     value={assignDeadline}
                     onChange={(e) => setAssignDeadline(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
