@@ -353,7 +353,7 @@ export default function PortalComponent() {
     }
   }
 
-  // Employee Permanent Deletion Handler (Admin right)
+  // Employee Permanent Deletion Handler (Admin right with strict error check)
   async function handleDeleteEmployee(userId: string, email: string) {
     if (userId === currentUser?.id) {
       alert("You cannot delete your own active manager account!");
@@ -361,7 +361,7 @@ export default function PortalComponent() {
     }
 
     const confirmText = prompt(
-      `WARNING: You are about to permanently delete employee "${email}" and all associated work logs, attendance, and task assignments.\n\nType 'DELETE' in capital letters to confirm:`
+      `WARNING: You are about to permanently delete employee "${email}" and all associated records.\n\nType 'DELETE' in capital letters to confirm:`
     );
     if (confirmText !== "DELETE") {
       alert("Deletion cancelled. Verification text did not match.");
@@ -369,23 +369,31 @@ export default function PortalComponent() {
     }
 
     try {
-      // 1. Delete associated child records to prevent foreign key constraint violations
+      // 1. Delete associated child records explicitly
       await supabase.from("work_logs").delete().eq("user_id", userId);
       await supabase.from("task_assignments").delete().eq("assigned_to", userId);
       await supabase.from("task_assignments").delete().eq("assigned_by", userId);
       await supabase.from("attendance").delete().eq("user_id", userId);
 
-      // 2. Delete profile record
-      const { error } = await supabase.from("profiles").delete().eq("id", userId);
-      if (error) throw error;
+      // 2. Delete profile record and throw error if RLS blocks it
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userId);
+
+      if (error) {
+        throw new Error(error.message);
+      }
 
       alert(`Employee "${email}" has been successfully deleted from the portal.`);
-      fetchProfiles();
-      fetchLogs();
-      fetchAssignments();
-      fetchAttendance();
+      
+      // Refresh all lists instantly
+      await fetchProfiles();
+      await fetchLogs();
+      await fetchAssignments();
+      await fetchAttendance();
     } catch (err: any) {
-      alert("Failed to delete employee: " + (err.message || err));
+      alert("Failed to delete employee: " + (err.message || "Permission denied or database constraint error."));
     }
   }
 
