@@ -31,7 +31,9 @@ import {
   Layers,
   BellRing,
   AlertTriangle,
-  User
+  User,
+  Eye,
+  Edit3
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -54,6 +56,7 @@ export default function PortalComponent() {
 
   // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
+  const [previewModalLog, setPreviewModalLog] = useState<any | null>(null);
   const [flashAlert, setFlashAlert] = useState<{
     show: boolean;
     type: "rejected" | "pending_assigned" | "clean";
@@ -108,7 +111,6 @@ export default function PortalComponent() {
   const profilesRef = useRef<any[]>([]);
   profilesRef.current = profilesList;
 
-  // Sound chime trigger
   function playNotificationSound() {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -178,7 +180,6 @@ export default function PortalComponent() {
     fetchProfiles();
     fetchAssignments();
 
-    // Dual-layer listener: Broadcast (0ms latency) + Postgres Changes
     const broadcastChannel = supabase
       .channel("exampur-live-events", {
         config: { broadcast: { self: false } },
@@ -468,6 +469,19 @@ export default function PortalComponent() {
     window.scrollTo({ top: 350, behavior: "smooth" });
   }
 
+  // Load an existing log back into the form for correction
+  function handleLoadForCorrection(log: any) {
+    setDepartment(log.department || "Publications & Testing");
+    setTaskCategory(log.task_category || "Question Formation");
+    setStage(log.stage || "Proof 1");
+    setSubjectBook(log.subject_book || "");
+    setTopicName(log.topic_name || "");
+    setQuantity(String(log.quantity || ""));
+    setPreviewModalLog(null);
+    window.scrollTo({ top: 350, behavior: "smooth" });
+    alert(`Loaded "${log.topic_name}" into form. Please correct your inputs, attach updated proof, and submit again.`);
+  }
+
   async function handleWorkSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -546,7 +560,6 @@ export default function PortalComponent() {
       },
     ]);
 
-    // Send instant zero-lag broadcast to Manager
     try {
       const channel = supabase.channel("exampur-live-events");
       await channel.send({
@@ -658,9 +671,9 @@ export default function PortalComponent() {
   async function updateStatus(logId: string, newStatus: "approved" | "rejected") {
     let remarks = "Approved by Manager";
     if (newStatus === "rejected") {
-      const inputRemarks = prompt("Enter specific reason for rejection:");
+      const inputRemarks = prompt("Enter specific reason or correction requested for rejection:");
       if (inputRemarks === null) return;
-      remarks = inputRemarks.trim() === "" ? "Rejected by Manager (No comments)" : inputRemarks;
+      remarks = inputRemarks.trim() === "" ? "Rejected by Manager (Needs revision)" : inputRemarks;
     }
 
     const { error } = await supabase
@@ -1135,11 +1148,15 @@ export default function PortalComponent() {
               </form>
             </div>
 
-            {/* Employee's Own Logs */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
-                <History className="w-4 h-4 text-orange-500" /> My Recent Submissions
-              </h3>
+            {/* Employee's Own Logs with Preview & Correction Action */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
+                  <History className="w-4 h-4 text-orange-500" /> My Recent Submissions & Done Work
+                </h3>
+                <span className="text-[11px] text-slate-400">Click Eye icon to preview files or re-submit correction</span>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
@@ -1149,10 +1166,11 @@ export default function PortalComponent() {
                       <th className="p-3 text-center">Qty</th>
                       <th className="p-3">Proof</th>
                       <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Preview / Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {myPersonalLogs.slice(0, 10).map((l) => (
+                    {myPersonalLogs.slice(0, 15).map((l) => (
                       <tr key={l.id} className="hover:bg-slate-800/40">
                         <td className="p-3">
                           <div className="font-semibold text-white">{l.topic_name}</div>
@@ -1179,11 +1197,36 @@ export default function PortalComponent() {
                             {l.status || "pending"}
                           </span>
                         </td>
+                        <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                          {/* Preview Done Work Button */}
+                          <button
+                            type="button"
+                            onClick={() => setPreviewModalLog(l)}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded border border-slate-700 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                            title="Preview submitted work"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-blue-400" />
+                            Preview
+                          </button>
+
+                          {/* Quick Edit/Correction Button (Available for rejected or review tasks) */}
+                          {l.status !== "approved" && (
+                            <button
+                              type="button"
+                              onClick={() => handleLoadForCorrection(l)}
+                              className="px-2.5 py-1 bg-amber-950/60 hover:bg-amber-600 text-amber-300 hover:text-white rounded border border-amber-800/80 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                              title="Edit and Re-submit"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              Fix / Re-submit
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {myPersonalLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
+                        <td colSpan={6} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1755,6 +1798,147 @@ export default function PortalComponent() {
                 <button
                   type="button"
                   onClick={() => setShowActiveTasksModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* ================= DONE WORK PREVIEW & REVISION MODAL ================= */}
+        {previewModalLog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Submission Work Details</h3>
+                    <p className="text-[11px] text-slate-400">Review task details, remarks & proof attachments</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalLog(null)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-5 text-xs">
+                {/* Status & Date */}
+                <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
+                  <div>
+                    <span className="text-slate-400 text-[10px] block uppercase font-mono">Submission Date</span>
+                    <span className="font-semibold text-white">
+                      {previewModalLog.created_at ? new Date(previewModalLog.created_at).toLocaleDateString("en-CA") : "N/A"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                      previewModalLog.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
+                      previewModalLog.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
+                      "bg-amber-950 text-amber-400 border border-amber-800"
+                    }`}>
+                      {previewModalLog.status || "pending"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Task Details Card */}
+                <div className="grid grid-cols-2 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80">
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-mono">Topic / Chapter</span>
+                    <p className="text-white font-bold text-sm mt-0.5">{previewModalLog.topic_name}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-mono">Subject / Book</span>
+                    <p className="text-slate-200 font-medium mt-0.5">{previewModalLog.subject_book}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-mono">Department & Category</span>
+                    <p className="text-slate-300 mt-0.5">{previewModalLog.department} &bull; {previewModalLog.task_category}</p>
+                    {previewModalLog.stage && (
+                      <span className="text-[10px] text-orange-400 font-mono">Stage: {previewModalLog.stage}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-mono">Completed Quantity</span>
+                    <p className="text-orange-400 font-bold text-base mt-0.5">{previewModalLog.quantity} Units</p>
+                  </div>
+                </div>
+
+                {/* Manager Feedback / Remarks */}
+                <div className={`p-4 rounded-xl border ${
+                  previewModalLog.status === "rejected"
+                    ? "bg-rose-950/30 border-rose-800/70 text-rose-200"
+                    : "bg-slate-950 border-slate-800 text-slate-300"
+                }`}>
+                  <span className="text-[10px] font-bold uppercase tracking-wider block mb-1">
+                    Manager Remarks / Feedback:
+                  </span>
+                  <p className="text-xs leading-relaxed font-sans">
+                    {previewModalLog.manager_remarks || "No specific comments recorded yet."}
+                  </p>
+                </div>
+
+                {/* Proof Attachments Preview */}
+                <div>
+                  <span className="text-slate-400 font-medium text-xs block mb-2">
+                    Submitted Proof Attachments:
+                  </span>
+                  <div className="space-y-2">
+                    {parseAttachmentUrls(previewModalLog.attachment_url).map((url, idx) => (
+                      <a
+                        key={idx}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 hover:border-blue-500 rounded-xl transition group text-slate-300 hover:text-white"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="w-4 h-4 text-blue-400 group-hover:scale-110 transition" />
+                          <span className="font-mono text-xs">Proof Document #{idx + 1}</span>
+                        </div>
+                        <span className="text-[11px] text-blue-400 group-hover:underline flex items-center gap-1 font-semibold">
+                          Open File <ExternalLink className="w-3 h-3" />
+                        </span>
+                      </a>
+                    ))}
+                    {parseAttachmentUrls(previewModalLog.attachment_url).length === 0 && (
+                      <p className="text-slate-500 text-xs italic">No attachment URL saved.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950/70 flex justify-between items-center gap-3">
+                {previewModalLog.status !== "approved" ? (
+                  <button
+                    type="button"
+                    onClick={() => handleLoadForCorrection(previewModalLog)}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer shadow-lg"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    Load for Correction & Re-submit
+                  </button>
+                ) : (
+                  <span className="text-[11px] text-emerald-400 font-medium">Task Verified & Approved</span>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalLog(null)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
                 >
                   Close
