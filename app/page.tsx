@@ -21,7 +21,8 @@ import {
   Sparkles,
   Paperclip,
   ExternalLink,
-  FileText
+  FileText,
+  Trash2
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -383,6 +384,35 @@ export default function PortalComponent() {
     if (error) alert("Error: " + error.message);
     else {
       fetchAttendance();
+      fetchLogs();
+    }
+  }
+
+  // 5. Manager Master Action: Wipe / Clear All Work Logs with Strict Confirmation
+  async function handleClearAllLogs() {
+    const isFirstConfirmed = confirm(
+      "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
+    );
+    if (!isFirstConfirmed) return;
+
+    const userInput = prompt(
+      "Type 'RESET' in capital letters to confirm permanent deletion of all work logs:"
+    );
+
+    if (userInput !== "RESET") {
+      alert("Reset cancelled. Verification text did not match.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("work_logs")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    if (error) {
+      alert("Error clearing logs: " + error.message);
+    } else {
+      alert("All work logs have been successfully wiped. The dashboard is now clean for fresh operations.");
       fetchLogs();
     }
   }
@@ -873,7 +903,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Filter Bar with CSV Export */}
+            {/* Filter Bar with CSV Export & Wipe Logs Option */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -889,7 +919,7 @@ export default function PortalComponent() {
                 {selectedDateFilter && (
                   <button
                     onClick={() => setSelectedDateFilter("")}
-                    className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs"
+                    className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs cursor-pointer"
                     title="Clear filter"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -897,7 +927,7 @@ export default function PortalComponent() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3 flex-wrap">
                 <button
                   type="button"
                   onClick={() => {
@@ -920,6 +950,17 @@ export default function PortalComponent() {
                 >
                   <Download className="w-3.5 h-3.5 text-orange-500" />
                   Export CSV
+                </button>
+
+                {/* Reset / Clear All Logs Button */}
+                <button
+                  type="button"
+                  onClick={handleClearAllLogs}
+                  className="flex items-center gap-1.5 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  title="Wipe and clean all work logs"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Reset All Logs
                 </button>
               </div>
             </div>
