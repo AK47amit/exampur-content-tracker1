@@ -799,7 +799,7 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // Robust Filter 1: Currently Delegated Tasks Search
+  // FIXED & ENHANCED Filter 1: Currently Delegated Tasks Search
   const filteredAssignments = useMemo(() => {
     if (!searchDelegated.trim()) return assignments;
     const q = searchDelegated.toLowerCase().trim();
@@ -812,6 +812,7 @@ export default function PortalComponent() {
       const book = (a.subject_book || "").toLowerCase();
       const dept = (a.department || "").toLowerCase();
       const cat = (a.task_category || "").toLowerCase();
+      const status = (a.status || "").toLowerCase();
 
       return (
         empEmail.includes(q) ||
@@ -819,7 +820,8 @@ export default function PortalComponent() {
         topic.includes(q) ||
         book.includes(q) ||
         dept.includes(q) ||
-        cat.includes(q)
+        cat.includes(q) ||
+        status.includes(q)
       );
     });
   }, [assignments, searchDelegated, profilesList]);
@@ -1540,7 +1542,7 @@ export default function PortalComponent() {
                       })}
                       {filteredAssignments.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="p-4 text-center text-slate-500">No delegated tasks match your filter.</td>
+                          <td colSpan={5} className="p-4 text-center text-slate-500">No delegated tasks match your search.</td>
                         </tr>
                       )}
                     </tbody>
@@ -2080,7 +2082,7 @@ export default function PortalComponent() {
 
                 <button
                   type="button"
-                  onClick={() => setPreviewModalLog(null)}
+                  onClick={() => setPreviewModalLog(Nll)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
                 >
                   Close
