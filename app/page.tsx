@@ -144,10 +144,22 @@ export default function PortalComponent() {
     window.location.href = "/login";
   };
 
-  // Submit Work Log
+  // Submit Work Log with 3MB File Size Limit Check
   const handleSubmitTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+
+    // File validation: Max 3MB (3 * 1024 * 1024 bytes)
+    if (fileAttachments.length > 0) {
+      const file = fileAttachments[0];
+      const maxSizeBytes = 3 * 1024 * 1024; // 3MB
+
+      if (file.size > maxSizeBytes) {
+        alert("File size exceeds 3MB limit! Please compress the screenshot or upload a smaller file.");
+        return;
+      }
+    }
+
     setSubmitting(true);
 
     try {
@@ -215,6 +227,56 @@ export default function PortalComponent() {
     } catch (err: any) {
       alert("Status update failed: " + err.message);
     }
+  };
+
+  // Export Filtered Submissions to CSV for Manager / Payroll / Audits
+  const handleExportCSV = () => {
+    const filteredLogs = logs.filter((log) => {
+      if (!selectedDateFilter) return true;
+      return log.created_at?.startsWith(selectedDateFilter);
+    });
+
+    if (filteredLogs.length === 0) {
+      alert("No data available to export.");
+      return;
+    }
+
+    const headers = [
+      "Date",
+      "Employee Email",
+      "Department",
+      "Task Category",
+      "Stage",
+      "Subject / Book",
+      "Topic Name",
+      "Quantity",
+      "Status",
+      "Proof URL",
+    ];
+
+    const rows = filteredLogs.map((log) => [
+      `"${log.created_at ? log.created_at.slice(0, 10) : ""}"`,
+      `"${log.employee_email || ""}"`,
+      `"${log.department || ""}"`,
+      `"${log.task_category || ""}"`,
+      `"${log.stage || ""}"`,
+      `"${(log.subject_book || "").replace(/"/g, '""')}"`,
+      `"${(log.topic_name || "").replace(/"/g, '""')}"`,
+      `"${log.quantity || 0}"`,
+      `"${log.status || "pending"}"`,
+      `"${log.proof_url || ""}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = `exampur_content_report_${selectedDateFilter || "all"}_${Date.now()}.csv`;
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (loadingUser) {
@@ -387,10 +449,11 @@ export default function PortalComponent() {
 
                 <div>
                   <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Attach Proof (Screenshot / File)
+                    Attach Proof (PNG, JPG, PDF - Max 3MB)
                   </label>
                   <input
                     type="file"
+                    accept="image/*,.pdf"
                     onChange={(e) => {
                       if (e.target.files) {
                         setFileAttachments(Array.from(e.target.files));
@@ -498,8 +561,8 @@ export default function PortalComponent() {
                 </p>
               </div>
 
-              {/* Date Filter */}
-              <div className="flex items-center gap-2">
+              {/* Filters and CSV Export Button */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <input
                   type="date"
                   value={selectedDateFilter}
@@ -515,6 +578,13 @@ export default function PortalComponent() {
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 )}
+                <button
+                  onClick={handleExportCSV}
+                  className="flex items-center gap-1.5 bg-[#21262d] hover:bg-[#30363d] text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition"
+                  title="Export filtered submissions to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-[#ff5722]" /> Export CSV
+                </button>
               </div>
             </div>
 
