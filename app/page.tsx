@@ -3,24 +3,25 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import {
-  CheckCircle2,
-  Clock,
-  XCircle,
-  Send,
-  ShieldCheck,
-  UserCheck,
-  LogOut,
-  CalendarCheck2,
-  History,
-  Download,
-  Filter,
+import { 
+  CheckCircle2, 
+  Clock, 
+  XCircle, 
+  Send, 
+  ShieldCheck, 
+  UserCheck, 
+  LogOut, 
+  CalendarCheck2, 
+  History, 
+  Download, 
+  Filter, 
   RotateCcw,
   AlertCircle,
   TableProperties,
   Sparkles,
   Paperclip,
   ExternalLink,
+  FileText
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -58,35 +59,25 @@ export default function PortalComponent() {
   // 1. Session Lifecycle, Role Verification & Domain Check
   useEffect(() => {
     async function initAuth() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
 
       if (!session?.user) {
         window.location.href = "/login";
         return;
       }
 
-      const userEmail = session.user.email?.toLowerCase() || "";
+      setCurrentUser(session.user);
 
-      // Fetch user profile from Supabase
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", session.user.id)
         .single();
 
-      const isAdmin = profile?.role === "admin";
-
-      // Domain Whitelist Check for Manager/Admin
-      if (isAdmin) {
-        if (!userEmail.endsWith("@exampur.com")) {
-          alert(
-            "Access Denied: Only official @exampur.com Google Workspace accounts are authorized for Manager/Admin access."
-          );
+      if (profile?.role === "admin") {
+        if (!session.user.email?.toLowerCase().endsWith("@exampur.com")) {
+          alert("Access Denied: Only @exampur.com Google Workspace accounts are authorized for Manager access.");
           await supabase.auth.signOut();
-          localStorage.clear();
-          sessionStorage.clear();
           window.location.href = "/login";
           return;
         }
@@ -97,16 +88,12 @@ export default function PortalComponent() {
         setActiveTab("employee");
       }
 
-      setCurrentUser(session.user);
       setLoadingUser(false);
-      fetchData();
     }
 
     initAuth();
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || !session) {
         localStorage.clear();
         sessionStorage.clear();
@@ -119,369 +106,643 @@ export default function PortalComponent() {
     };
   }, []);
 
-  // Fetch Logs, Attendance, and Profiles
-  const fetchData = async () => {
-    try {
-      const [logsRes, attendanceRes, profilesRes] = await Promise.all([
-        supabase.from("work_logs").select("*").order("created_at", { ascending: false }),
-        supabase.from("attendance").select("*").order("date", { ascending: false }),
-        supabase.from("profiles").select("*"),
-      ]);
+  // 2. Realtime Listeners
+  useEffect(() => {
+    fetchLogs();
+    fetchAttendance();
+    fetchProfiles();
 
-      if (logsRes.data) setLogs(logsRes.data);
-      if (attendanceRes.data) setAttendanceRecords(attendanceRes.data);
-      if (profilesRes.data) setProfilesList(profilesRes.data);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
+    const logsChannel = supabase
+      .channel("realtime-work-logs")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "work_logs" },
+        () => {
+          fetchLogs();
+        }
+      )
+      .subscribe();
+
+    const attendanceChannel = supabase
+      .channel("realtime-attendance")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance" },
+        () => {
+          fetchAttendance();
+        }
+      )
+      .subscribe();
+
+    const profilesChannel = supabase
+      .channel("realtime-profiles")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          fetchProfiles();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(logsChannel);
+      supabase.removeChannel(attendanceChannel);
+      supabase.removeChannel(profilesChannel);
+    };
+  }, [currentUser]);
+
+  async function fetchLogs() {
+    const { data } = await supabase
+      .from("work_logs")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setLogs(data);
+  }
+
+  async function fetchProfiles() {
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setProfilesList(data);
+  }
+
+  async function fetchAttendance() {
+    const { data: attData } = await supabase
+      .from("attendance")
+      .select("*")
+      .order("attendance_date", { ascending: false });
+
+    if (!attData) return;
+
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("*");
+
+    const profileMap = new Map();
+    if (profiles) {
+      profiles.forEach((p: any) => {
+        const identifier = p.email || p.full_name || p.username;
+        if (identifier) {
+          profileMap.set(String(p.id), identifier);
+        }
+      });
     }
-  };
 
-  // Sign out handler
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = "/login";
-  };
+    const resolved = attData.map((rec) => {
+      let displayName = profileMap.get(String(rec.user_id));
 
-  // Submit Work Log with 3MB File Size Limit Check
-  const handleSubmitTask = async (e: React.FormEvent) => {
+      if (!displayName && currentUser && String(rec.user_id) === String(currentUser.id)) {
+        displayName = currentUser.email;
+      }
+
+      return {
+        ...rec,
+        user_display: displayName || `Employee (${String(rec.user_id).slice(0, 8)}...)`,
+      };
+    });
+
+    setAttendanceRecords(resolved);
+  }
+
+  // 3. Manual Logout Handler
+  async function handleLogout() {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("SignOut error:", err);
+    } finally {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/login";
+    }
+  }
+
+  // Helper to parse attachment URLs
+  function parseAttachmentUrls(urlField: string | null | undefined): string[] {
+    if (!urlField) return [];
+    try {
+      if (urlField.startsWith("[")) {
+        return JSON.parse(urlField);
+      }
+      return urlField.split(",").map((s) => s.trim()).filter(Boolean);
+    } catch {
+      return [urlField];
+    }
+  }
+
+  // 4. Strict Work Submission Handler with 3MB File Limit
+  async function handleWorkSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUser) return;
 
-    // File validation: Max 3MB (3 * 1024 * 1024 bytes)
-    if (fileAttachments.length > 0) {
-      const file = fileAttachments[0];
-      const maxSizeBytes = 3 * 1024 * 1024; // 3MB
+    if (!department.trim()) {
+      alert("Please select a Department.");
+      return;
+    }
 
-      if (file.size > maxSizeBytes) {
-        alert("File size exceeds 3MB limit! Please compress the screenshot or upload a smaller file.");
+    if (department === "Publications & Testing" && !taskCategory.trim()) {
+      alert("Please select a Task Type.");
+      return;
+    }
+
+    if (department === "Publications & Testing" && taskCategory === "Proofing" && !stage.trim()) {
+      alert("Please select a Proofing Stage.");
+      return;
+    }
+
+    if (!subjectBook.trim()) {
+      alert("Please fill in Subject / Book Name.");
+      return;
+    }
+
+    if (!topicName.trim()) {
+      alert("Please fill in Topic / Chapter Name.");
+      return;
+    }
+
+    const parsedQty = parseInt(quantity);
+    if (isNaN(parsedQty) || parsedQty <= 0) {
+      alert("Please enter a valid Quantity greater than 0.");
+      return;
+    }
+
+    // MANDATORY PROOF ATTACHMENT
+    if (!fileAttachments || fileAttachments.length === 0) {
+      alert("Proof attachment is mandatory! Please attach at least 1 file (PDF, Screenshot, or Photo).");
+      return;
+    }
+
+    // 3MB File Size Limit Check
+    const maxSizeBytes = 3 * 1024 * 1024;
+    for (let i = 0; i < fileAttachments.length; i++) {
+      if (fileAttachments[i].size > maxSizeBytes) {
+        alert(`File "${fileAttachments[i].name}" exceeds 3MB limit! Please compress or select a smaller file.`);
         return;
       }
     }
 
     setSubmitting(true);
+    const activeUserId = currentUser?.id;
+    const uploadedUrls: string[] = [];
 
     try {
-      let attachmentUrl = "";
-
-      // File upload handler
-      if (fileAttachments.length > 0) {
-        const file = fileAttachments[0];
+      for (let i = 0; i < fileAttachments.length; i++) {
+        const file = fileAttachments[i];
         const fileExt = file.name.split(".").pop();
-        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+        const cleanFileName = `${activeUserId}_${Date.now()}_${i}.${fileExt}`;
+        const filePath = `proofs/${cleanFileName}`;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from("proofs")
-          .upload(fileName, file);
+        const { error: uploadError } = await supabase.storage
+          .from("work-proofs")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          alert(`File "${file.name}" upload failed: ${uploadError.message}`);
+          setSubmitting(false);
+          return;
+        }
 
         const { data: publicUrlData } = supabase.storage
-          .from("proofs")
-          .getPublicUrl(fileName);
+          .from("work-proofs")
+          .getPublicUrl(filePath);
 
-        attachmentUrl = publicUrlData.publicUrl;
+        if (publicUrlData?.publicUrl) {
+          uploadedUrls.push(publicUrlData.publicUrl);
+        }
       }
+    } catch (err: any) {
+      alert("Upload error: " + err.message);
+      setSubmitting(false);
+      return;
+    }
 
-      const { data, error } = await supabase.from("work_logs").insert([
-        {
-          user_id: currentUser.id,
-          employee_email: currentUser.email,
-          department,
-          task_category: taskCategory,
-          stage,
-          subject_book: subjectBook,
-          topic_name: topicName,
-          quantity: parseInt(quantity) || 0,
-          proof_url: attachmentUrl,
-          status: "pending",
-        },
-      ]);
+    const { error } = await supabase.from("work_logs").insert([
+      {
+        user_id: activeUserId,
+        department: department,
+        task_category: department === "DTP" ? "DTP Work" : taskCategory,
+        stage: department === "Publications & Testing" && taskCategory === "Proofing" ? stage : null,
+        subject_book: subjectBook.trim(),
+        topic_name: topicName.trim(),
+        quantity: parsedQty,
+        status: "pending",
+        attachment_url: uploadedUrls.join(","),
+      },
+    ]);
 
-      if (error) throw error;
-
-      alert("Work log submitted successfully!");
+    setSubmitting(false);
+    if (!error) {
       setSubjectBook("");
       setTopicName("");
       setQuantity("");
       setFileAttachments([]);
-      fetchData();
-    } catch (err: any) {
-      alert("Submission error: " + (err.message || "Failed to submit task"));
-    } finally {
-      setSubmitting(false);
+      const fileInput = document.getElementById("file-upload-input") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
+      alert(`Work log with ${uploadedUrls.length} attachment(s) submitted successfully!`);
+      fetchLogs();
+    } else {
+      alert("Error: " + error.message);
     }
-  };
+  }
 
-  // Manager Approve/Reject Handler
-  const handleUpdateStatus = async (id: string, newStatus: "approved" | "rejected") => {
-    try {
-      const { error } = await supabase
-        .from("work_logs")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-      if (error) throw error;
-      fetchData();
-    } catch (err: any) {
-      alert("Status update failed: " + err.message);
+  async function updateStatus(logId: string, newStatus: "approved" | "rejected") {
+    let remarks = "Approved by Manager";
+    if (newStatus === "rejected") {
+      const inputRemarks = prompt("Enter specific reason for rejection:");
+      if (inputRemarks === null) return;
+      remarks = inputRemarks.trim() === "" ? "Rejected by Manager (No comments)" : inputRemarks;
     }
-  };
 
-  // Export Filtered Submissions to CSV for Manager / Payroll / Audits
-  const handleExportCSV = () => {
-    const filteredLogs = logs.filter((log) => {
-      if (!selectedDateFilter) return true;
-      return log.created_at?.startsWith(selectedDateFilter);
-    });
+    const { error } = await supabase
+      .from("work_logs")
+      .update({ status: newStatus, manager_remarks: remarks })
+      .eq("id", logId);
 
-    if (filteredLogs.length === 0) {
-      alert("No data available to export.");
+    if (error) alert("Error: " + error.message);
+    else {
+      fetchAttendance();
+      fetchLogs();
+    }
+  }
+
+  // CSV Export Utility
+  function exportToCSV(filename: string, rows: object[]) {
+    if (!rows || !rows.length) {
+      alert("No data available to export!");
       return;
     }
+    const separator = ",";
+    const keys = Object.keys(rows[0]);
+    const csvContent =
+      keys.join(separator) +
+      "\n" +
+      rows
+        .map((row: any) => {
+          return keys
+            .map((k) => {
+              let cell = row[k] === null || row[k] === undefined ? "" : row[k];
+              cell = String(cell).replace(/"/g, '""');
+              if (String(cell).search(/("|,|\n)/g) >= 0) {
+                cell = `"${cell}"`;
+              }
+              return cell;
+            })
+            .join(separator);
+        })
+        .join("\n");
 
-    const headers = [
-      "Date",
-      "Employee Email",
-      "Department",
-      "Task Category",
-      "Stage",
-      "Subject / Book",
-      "Topic Name",
-      "Quantity",
-      "Status",
-      "Proof URL",
-    ];
-
-    const rows = filteredLogs.map((log) => [
-      `"${log.created_at ? log.created_at.slice(0, 10) : ""}"`,
-      `"${log.employee_email || ""}"`,
-      `"${log.department || ""}"`,
-      `"${log.task_category || ""}"`,
-      `"${log.stage || ""}"`,
-      `"${(log.subject_book || "").replace(/"/g, '""')}"`,
-      `"${(log.topic_name || "").replace(/"/g, '""')}"`,
-      `"${log.quantity || 0}"`,
-      `"${log.status || "pending"}"`,
-      `"${log.proof_url || ""}"`,
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const filename = `exampur_content_report_${selectedDateFilter || "all"}_${Date.now()}.csv`;
+    const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
-    link.setAttribute("download", filename);
+    link.setAttribute("download", `${filename}.csv`);
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }
+
+  // Days in Selected Month
+  const monthDays = useMemo(() => {
+    const [yearStr, monthStr] = selectedMonthFilter.split("-");
+    const year = parseInt(yearStr);
+    const month = parseInt(monthStr);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    return Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  }, [selectedMonthFilter]);
+
+  // Master Timesheet calculation
+  const masterTimesheetData = useMemo(() => {
+    const userMap = new Map<string, { email: string; createdAt?: string }>();
+    
+    profilesList.forEach((p) => {
+      if (p.id && !p.id.startsWith("00000000")) {
+        userMap.set(String(p.id), {
+          email: p.email || p.full_name || "Employee",
+          createdAt: p.created_at,
+        });
+      }
+    });
+
+    if (currentUser && !currentUser.id.startsWith("00000000")) {
+      userMap.set(String(currentUser.id), {
+        email: currentUser.email,
+        createdAt: currentUser.created_at,
+      });
+    }
+
+    logs.forEach((l) => {
+      if (l.user_id && !l.user_id.startsWith("00000000") && !userMap.has(String(l.user_id))) {
+        userMap.set(String(l.user_id), {
+          email: `Employee (${String(l.user_id).slice(0, 8)}...)`,
+        });
+      }
+    });
+
+    const monthLogs = logs.filter(
+      (l) => l.created_at && l.created_at.startsWith(selectedMonthFilter)
+    );
+    const monthAtt = attendanceRecords.filter(
+      (a) => a.attendance_date && a.attendance_date.startsWith(selectedMonthFilter)
+    );
+
+    return Array.from(userMap.entries()).map(([userId, userInfo]) => {
+      const dailyUnits: { [day: number]: number } = {};
+      monthDays.forEach((d) => (dailyUnits[d] = 0));
+
+      let monthTotalUnits = 0;
+
+      monthLogs
+        .filter((l) => String(l.user_id) === userId && l.status === "approved")
+        .forEach((log) => {
+          const logDate = new Date(log.created_at);
+          const day = logDate.getDate();
+          const qty = Number(log.quantity) || 0;
+          dailyUnits[day] = (dailyUnits[day] || 0) + qty;
+          monthTotalUnits += qty;
+        });
+
+      const userPresentDates = new Set(
+        monthAtt
+          .filter((a) => String(a.user_id) === userId && a.status === "PRESENT")
+          .map((a) => a.attendance_date)
+      );
+      const totalPresentDays = userPresentDates.size;
+      const dailyAvg = totalPresentDays > 0 ? (monthTotalUnits / totalPresentDays).toFixed(1) : "0";
+
+      return {
+        userId,
+        email: userInfo.email,
+        joinDate: userInfo.createdAt ? userInfo.createdAt.slice(0, 10) : "Active",
+        dailyUnits,
+        monthTotalUnits,
+        totalPresentDays,
+        dailyAvg,
+      };
+    }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
+  }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays, currentUser]);
+
+  // Real-time Queue Date Filtering
+  const filteredLogs = useMemo(() => {
+    if (!selectedDateFilter) return logs;
+    return logs.filter((log) => {
+      const logDate = log.created_at ? log.created_at.slice(0, 10) : "";
+      return logDate === selectedDateFilter;
+    });
+  }, [logs, selectedDateFilter]);
+
+  const filteredAttendance = useMemo(() => {
+    if (!selectedDateFilter) return attendanceRecords;
+    return attendanceRecords.filter((rec) => rec.attendance_date === selectedDateFilter);
+  }, [attendanceRecords, selectedDateFilter]);
+
+  const myPersonalLogs = logs.filter(
+    (log) => currentUser && String(log.user_id) === String(currentUser.id)
+  );
+
+  // Overall Manager Summary Metrics
+  const summaryMetrics = useMemo(() => {
+    const totalCount = logs.length;
+    const approvedCount = logs.filter((l) => l.status === "approved").length;
+    const pendingCount = logs.filter((l) => l.status === "pending").length;
+    const rejectedCount = logs.filter((l) => l.status === "rejected").length;
+    const totalUnitsProduced = logs
+      .filter((l) => l.status === "approved")
+      .reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
+
+    return { totalCount, approvedCount, pendingCount, rejectedCount, totalUnitsProduced };
+  }, [logs]);
 
   if (loadingUser) {
     return (
-      <div className="min-h-screen bg-[#0d1117] flex items-center justify-center text-white text-sm">
-        <Sparkles className="w-5 h-5 animate-spin mr-2 text-[#ff5722]" /> Loading Operations Workspace...
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-sm">
+        <Sparkles className="w-5 h-5 animate-spin mr-2 text-orange-500" />
+        Authenticating session & verifying credentials...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-200">
-      {/* Top Navbar */}
-      <nav className="bg-[#161b22] border-b border-gray-800 px-6 py-3.5 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <span className="bg-[#ff5722] text-white text-xs font-black px-2.5 py-1 rounded tracking-wider">
-            EXAMPUR
-          </span>
-          <span className="font-bold text-white tracking-wide text-sm hidden sm:inline">
-            Content Operations
-          </span>
-        </div>
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
+      <div className="max-w-7xl mx-auto space-y-8">
+        
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+              <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-mono">EXAMPUR</span>
+              Content Operations & Work Audit Portal
+            </h1>
+            <p className="text-slate-400 text-sm mt-1">Real-time Daily Performance Matrix, Dynamic Timesheet & Verification</p>
+          </div>
 
-        <div className="flex items-center gap-3">
-          {/* Role badge */}
-          <span className="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-300 border border-gray-700 font-medium">
-            {userRole === "admin" ? "Manager (Admin)" : "Employee"}
-          </span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-right">
+              <p className="text-xs text-slate-200 font-medium">{currentUser?.email}</p>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
+                  userRole === "admin"
+                    ? "bg-purple-950/70 text-purple-300 border-purple-800"
+                    : "bg-blue-950/70 text-blue-300 border-blue-800"
+                }`}
+              >
+                {userRole === "admin" ? "Manager (Admin)" : "Employee"}
+              </span>
+            </div>
 
-          <span className="text-xs text-gray-400 hidden md:inline">
-            {currentUser?.email}
-          </span>
-
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 text-xs text-gray-300 hover:text-white bg-[#21262d] hover:bg-gray-700 px-3 py-1.5 rounded-lg border border-gray-700 transition"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Logout</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
-        {/* Navigation Tabs if Admin */}
-        {userRole === "admin" && (
-          <div className="flex gap-2 border-b border-gray-800 pb-3">
             <button
-              onClick={() => setActiveTab("manager")}
-              className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === "manager"
-                  ? "bg-[#ff5722] text-white"
-                  : "text-gray-400 hover:text-white bg-[#161b22]"
-              }`}
+              type="button"
+              onClick={handleLogout}
+              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
             >
-              Manager Review Dashboard
-            </button>
-            <button
-              onClick={() => setActiveTab("employee")}
-              className={`px-4 py-2 text-sm font-semibold rounded-lg transition ${
-                activeTab === "employee"
-                  ? "bg-[#ff5722] text-white"
-                  : "text-gray-400 hover:text-white bg-[#161b22]"
-              }`}
-            >
-              Employee Submission View
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
             </button>
           </div>
-        )}
+        </div>
 
-        {/* ---------------- EMPLOYEE VIEW ---------------- */}
-        {activeTab === "employee" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Task Submission Form */}
-            <div className="lg:col-span-1 bg-[#161b22] border border-gray-800 rounded-2xl p-5 shadow-xl">
-              <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <Send className="w-4 h-4 text-[#ff5722]" /> Submit Daily Work Log
-              </h2>
+        {/* Tab Navigation */}
+        <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-lg w-fit">
+          <button
+            type="button"
+            onClick={() => setActiveTab("employee")}
+            className={`px-4 py-2 text-sm font-medium rounded-md transition cursor-pointer ${
+              activeTab === "employee" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"
+            }`}
+          >
+            Employee View
+          </button>
 
-              <form onSubmit={handleSubmitTask} className="space-y-3.5 text-xs">
+          {userRole === "admin" && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("manager")}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition cursor-pointer flex items-center gap-2 ${
+                activeTab === "manager" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <TableProperties className="w-4 h-4" />
+              Manager Master Dashboard (Ashish Sir)
+            </button>
+          )}
+        </div>
+
+        {/* ================= EMPLOYEE VIEW ================= */}
+        {activeTab === "employee" ? (
+          <div className="space-y-8 max-w-4xl mx-auto">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Send className="w-5 h-5 text-orange-500" /> Daily Work Log Submission
+                </h2>
+                <p className="text-slate-400 text-xs mt-1">
+                  <span className="text-rose-400 font-semibold">* All fields and proof attachments are strictly mandatory.</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleWorkSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Department
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">
+                    Department <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    required
                     value={department}
                     onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
                   >
                     <option value="Publications & Testing">Publications & Testing</option>
-                    <option value="Curriculum & Notes">Curriculum & Notes</option>
-                    <option value="Question Bank Development">Question Bank Development</option>
+                    <option value="DTP">DTP</option>
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Task Category
-                  </label>
-                  <select
-                    value={taskCategory}
-                    onChange={(e) => setTaskCategory(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
-                  >
-                    <option value="Question Formation">Question Formation</option>
-                    <option value="Proof Reading">Proof Reading</option>
-                    <option value="Solution Drafting">Solution Drafting</option>
-                    <option value="Translation">Translation</option>
-                  </select>
-                </div>
+                {department === "Publications & Testing" && (
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">
+                      Task Type <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={taskCategory}
+                      onChange={(e) => setTaskCategory(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                    >
+                      <option value="Question Formation">Question Formation</option>
+                      <option value="Proofing">Proofing</option>
+                      <option value="Solution Drafting">Solution Drafting</option>
+                      <option value="Translation">Translation</option>
+                    </select>
+                  </div>
+                )}
+
+                {department === "Publications & Testing" && taskCategory === "Proofing" && (
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">
+                      Proofing Stage <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      required
+                      value={stage}
+                      onChange={(e) => setStage(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                    >
+                      <option value="Proof 1">Proof 1</option>
+                      <option value="Proof 2">Proof 2</option>
+                      <option value="Final Quality Check">Final Quality Check</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Stage
-                  </label>
-                  <select
-                    value={stage}
-                    onChange={(e) => setStage(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
-                  >
-                    <option value="Proof 1">Proof 1</option>
-                    <option value="Proof 2">Proof 2</option>
-                    <option value="Final Quality Check">Final Quality Check</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Subject / Book
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">
+                    Subject / Book Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Samanya Gyan Vol 1"
+                    placeholder="e.g., RRB Maths Practice Set"
                     value={subjectBook}
                     onChange={(e) => setSubjectBook(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Topic Name
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">
+                    Topic / Chapter Name <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ancient History Harappa"
+                    placeholder="e.g., Number System Part 1"
                     value={topicName}
                     onChange={(e) => setTopicName(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Units / Questions Quantity
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">
+                    Quantity Completed <span className="text-rose-500">*</span>
                   </label>
                   <input
                     type="number"
                     required
                     min="1"
-                    placeholder="e.g. 50"
+                    placeholder="e.g., 50"
                     value={quantity}
                     onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-[#ff5722]"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-gray-400 font-semibold mb-1 uppercase tracking-wider">
-                    Attach Proof (PNG, JPG, PDF - Max 3MB)
+                <div className="md:col-span-2">
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">
+                    Attach Mandatory Proof (Max 3MB per file) <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="file-upload-input"
                     type="file"
+                    multiple
                     accept="image/*,.pdf"
+                    required
                     onChange={(e) => {
                       if (e.target.files) {
                         setFileAttachments(Array.from(e.target.files));
                       }
                     }}
-                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-gray-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-[#21262d] file:text-gray-300 hover:file:bg-gray-700"
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
                   />
+                  <p className="text-[11px] text-slate-500 mt-1">Accepts images (PNG, JPG) and PDF documents up to 3MB.</p>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full bg-[#ff5722] hover:bg-[#f4511e] disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl shadow-lg transition mt-4"
-                >
-                  {submitting ? "Uploading & Submitting..." : "Submit Daily Work Log"}
-                </button>
+                <div className="md:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Send className="w-4 h-4" />
+                    {submitting ? "Uploading & Submitting..." : "Submit Daily Work Log"}
+                  </button>
+                </div>
               </form>
             </div>
 
-            {/* Employee's Own Recent Logs */}
-            <div className="lg:col-span-2 bg-[#161b22] border border-gray-800 rounded-2xl p-5 shadow-xl">
-              <h2 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                <History className="w-4 h-4 text-blue-400" /> My Recent Submissions
-              </h2>
-
+            {/* Employee's Own Logs */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
+                <History className="w-4 h-4 text-orange-500" /> My Recent Submissions
+              </h3>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-gray-300">
-                  <thead className="bg-[#0d1117] text-gray-400 font-semibold uppercase text-[10px] tracking-wider border-b border-gray-800">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="p-3">Topic / Subject</th>
                       <th className="p-3">Category</th>
@@ -490,54 +751,317 @@ export default function PortalComponent() {
                       <th className="p-3">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-800">
-                    {logs
-                      .filter((l) => l.user_id === currentUser?.id)
-                      .slice(0, 10)
-                      .map((log) => (
-                        <tr key={log.id} className="hover:bg-gray-800/30">
-                          <td className="p-3">
-                            <div className="font-semibold text-white">{log.topic_name}</div>
-                            <div className="text-[11px] text-gray-500">{log.subject_book}</div>
-                          </td>
-                          <td className="p-3">
-                            <div>{log.task_category}</div>
-                            <div className="text-[10px] text-gray-500">{log.stage}</div>
-                          </td>
-                          <td className="p-3 text-center font-bold text-white">{log.quantity}</td>
-                          <td className="p-3">
-                            {log.proof_url ? (
-                              <a
-                                href={log.proof_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-blue-400 hover:underline inline-flex items-center gap-1"
-                              >
-                                View <ExternalLink className="w-3 h-3" />
-                              </a>
-                            ) : (
-                              <span className="text-gray-500">None</span>
-                            )}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                log.status === "approved"
-                                  ? "bg-green-950 text-green-400 border border-green-800"
-                                  : log.status === "rejected"
-                                  ? "bg-red-950 text-red-400 border border-red-800"
-                                  : "bg-yellow-950 text-yellow-400 border border-yellow-800"
+                  <tbody className="divide-y divide-slate-800">
+                    {myPersonalLogs.slice(0, 10).map((l) => (
+                      <tr key={l.id} className="hover:bg-slate-800/40">
+                        <td className="p-3">
+                          <div className="font-semibold text-white">{l.topic_name}</div>
+                          <div className="text-[10px] text-slate-500">{l.subject_book}</div>
+                        </td>
+                        <td className="p-3">
+                          <div>{l.task_category}</div>
+                          {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
+                        </td>
+                        <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                        <td className="p-3">
+                          {parseAttachmentUrls(l.attachment_url).map((url, i) => (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2"
+                            >
+                              Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ))}
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              l.status === "approved"
+                                ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                                : l.status === "rejected"
+                                ? "bg-rose-950 text-rose-400 border border-rose-800"
+                                : "bg-amber-950 text-amber-400 border border-amber-800"
+                            }`}
+                          >
+                            {l.status || "pending"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {myPersonalLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-4 text-center text-slate-500">
+                          No submissions logged yet today.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ================= MANAGER MASTER DASHBOARD (ASHISH SIR) ================= */
+          <div className="space-y-8">
+            {/* Metric Summary Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-slate-400 font-medium">Total Entries</p>
+                <p className="text-2xl font-bold text-white mt-1">{summaryMetrics.totalCount}</p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-emerald-400 font-medium">Approved</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">{summaryMetrics.approvedCount}</p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-amber-400 font-medium">Pending Review</p>
+                <p className="text-2xl font-bold text-amber-400 mt-1">{summaryMetrics.pendingCount}</p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-rose-400 font-medium">Rejected</p>
+                <p className="text-2xl font-bold text-rose-400 mt-1">{summaryMetrics.rejectedCount}</p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 md:col-span-1">
+                <p className="text-xs text-orange-400 font-medium">Approved Units Output</p>
+                <p className="text-2xl font-bold text-orange-400 mt-1">{summaryMetrics.totalUnitsProduced}</p>
+              </div>
+            </div>
+
+            {/* Filter Bar with CSV Export */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-orange-500" />
+                  <span className="text-xs text-slate-300 font-semibold uppercase">Daily Queue Filter:</span>
+                </div>
+                <input
+                  type="date"
+                  value={selectedDateFilter}
+                  onChange={(e) => setSelectedDateFilter(e.target.value)}
+                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none"
+                />
+                {selectedDateFilter && (
+                  <button
+                    onClick={() => setSelectedDateFilter("")}
+                    className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs"
+                    title="Clear filter"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const exportRows = filteredLogs.map((l) => ({
+                      Date: l.created_at ? l.created_at.slice(0, 10) : "",
+                      Employee_Email: l.employee_email || "",
+                      Department: l.department || "",
+                      Task_Category: l.task_category || "",
+                      Stage: l.stage || "",
+                      Subject_Book: l.subject_book || "",
+                      Topic_Name: l.topic_name || "",
+                      Quantity: l.quantity || 0,
+                      Status: l.status || "pending",
+                      Remarks: l.manager_remarks || "",
+                      Proof_URL: l.attachment_url || "",
+                    }));
+                    exportToCSV(`exampur_work_logs_${selectedDateFilter || "all"}`, exportRows);
+                  }}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-orange-500" />
+                  Export CSV
+                </button>
+              </div>
+            </div>
+
+            {/* Real-time Submissions Queue */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+              <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Date</th>
+                      <th className="p-3">Topic / Subject</th>
+                      <th className="p-3">Category</th>
+                      <th className="p-3 text-center">Quantity</th>
+                      <th className="p-3">Proof</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredLogs.map((l) => (
+                      <tr key={l.id} className="hover:bg-slate-800/40">
+                        <td className="p-3 text-slate-400 font-mono text-[11px]">
+                          {l.created_at ? l.created_at.slice(0, 10) : ""}
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-white">{l.topic_name}</div>
+                          <div className="text-[10px] text-slate-500">{l.subject_book}</div>
+                        </td>
+                        <td className="p-3">
+                          <div>{l.task_category}</div>
+                          {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
+                        </td>
+                        <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                        <td className="p-3">
+                          {parseAttachmentUrls(l.attachment_url).map((url, i) => (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2"
+                            >
+                              Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ))}
+                        </td>
+                        <td className="p-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              l.status === "approved"
+                                ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
+                                : l.status === "rejected"
+                                ? "bg-rose-950 text-rose-400 border border-rose-800"
+                                : "bg-amber-950 text-amber-400 border border-amber-800"
+                            }`}
+                          >
+                            {l.status || "pending"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right space-x-2">
+                          {l.status !== "approved" && (
+                            <button
+                              onClick={() => updateStatus(l.id, "approved")}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {l.status !== "rejected" && (
+                            <button
+                              onClick={() => updateStatus(l.id, "rejected")}
+                              className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">
+                          No logs found for the selected period.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Monthly Master Performance Timesheet Matrix (Ashish Sir) */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-4">
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
+                    <TableProperties className="w-4 h-4 text-orange-500" />
+                    Monthly Master Timesheet (Performance Matrix)
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Approved production units broken down by calendar days</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="month"
+                    value={selectedMonthFilter}
+                    onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const exportMatrixRows = masterTimesheetData.map((d) => {
+                        const rowObj: any = {
+                          Employee: d.email,
+                          JoinDate: d.joinDate,
+                          TotalUnits: d.monthTotalUnits,
+                          DaysPresent: d.totalPresentDays,
+                          DailyAverage: d.dailyAvg,
+                        };
+                        monthDays.forEach((day) => {
+                          rowObj[`Day_${day}`] = d.dailyUnits[day] || 0;
+                        });
+                        return rowObj;
+                      });
+                      exportToCSV(`exampur_master_timesheet_${selectedMonthFilter}`, exportMatrixRows);
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-orange-500" />
+                    Export Matrix
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto max-h-[500px]">
+                <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-800">
+                    <tr>
+                      <th className="p-2.5 sticky left-0 bg-slate-950 z-20 min-w-[180px]">Employee</th>
+                      <th className="p-2.5 text-center min-w-[70px]">Total</th>
+                      <th className="p-2.5 text-center min-w-[60px]">Present</th>
+                      <th className="p-2.5 text-center min-w-[60px]">Daily Avg</th>
+                      {monthDays.map((day) => (
+                        <th key={day} className="p-2 text-center min-w-[32px]">{day}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {masterTimesheetData.map((row) => (
+                      <tr key={row.userId} className="hover:bg-slate-800/40">
+                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">
+                          {row.email}
+                        </td>
+                        <td className="p-2.5 text-center font-bold text-orange-400 bg-slate-950/40">
+                          {row.monthTotalUnits}
+                        </td>
+                        <td className="p-2.5 text-center text-slate-300 font-mono">
+                          {row.totalPresentDays}
+                        </td>
+                        <td className="p-2.5 text-center text-emerald-400 font-semibold font-mono">
+                          {row.dailyAvg}
+                        </td>
+                        {monthDays.map((day) => {
+                          const units = row.dailyUnits[day];
+                          return (
+                            <td
+                              key={day}
+                              className={`p-2 text-center text-[11px] font-mono ${
+                                units > 0 ? "text-white font-bold bg-slate-800/60" : "text-slate-600"
                               }`}
                             >
-                              {log.status || "pending"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    {logs.filter((l) => l.user_id === currentUser?.id).length === 0 && (
+                              {units > 0 ? units : "-"}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    {masterTimesheetData.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-gray-500">
-                          No submissions recorded yet today.
+                        <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">
+                          No timesheet data recorded for this month.
                         </td>
                       </tr>
                     )}
@@ -547,144 +1071,7 @@ export default function PortalComponent() {
             </div>
           </div>
         )}
-
-        {/* ---------------- MANAGER REVIEW VIEW ---------------- */}
-        {activeTab === "manager" && userRole === "admin" && (
-          <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-5 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-800">
-              <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-green-400" /> Operational Submissions & Verification
-                </h2>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Review, approve and audit content team daily outputs.
-                </p>
-              </div>
-
-              {/* Filters and CSV Export Button */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <input
-                  type="date"
-                  value={selectedDateFilter}
-                  onChange={(e) => setSelectedDateFilter(e.target.value)}
-                  className="bg-[#0d1117] border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none"
-                />
-                {selectedDateFilter && (
-                  <button
-                    onClick={() => setSelectedDateFilter("")}
-                    className="p-1.5 bg-[#21262d] text-gray-400 hover:text-white rounded-lg border border-gray-700"
-                    title="Clear filter"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                <button
-                  onClick={handleExportCSV}
-                  className="flex items-center gap-1.5 bg-[#21262d] hover:bg-[#30363d] text-white border border-gray-700 px-3 py-1.5 rounded-xl text-xs font-semibold transition"
-                  title="Export filtered submissions to CSV"
-                >
-                  <Download className="w-3.5 h-3.5 text-[#ff5722]" /> Export CSV
-                </button>
-              </div>
-            </div>
-
-            {/* Submissions Review Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-gray-300">
-                <thead className="bg-[#0d1117] text-gray-400 font-semibold uppercase text-[10px] tracking-wider border-b border-gray-800">
-                  <tr>
-                    <th className="p-3">Employee</th>
-                    <th className="p-3">Topic / Subject</th>
-                    <th className="p-3">Category</th>
-                    <th className="p-3 text-center">Quantity</th>
-                    <th className="p-3">Proof</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {logs
-                    .filter((log) => {
-                      if (!selectedDateFilter) return true;
-                      return log.created_at?.startsWith(selectedDateFilter);
-                    })
-                    .map((log) => (
-                      <tr key={log.id} className="hover:bg-gray-800/30">
-                        <td className="p-3">
-                          <div className="font-semibold text-white">
-                            {log.employee_email?.split("@")[0]}
-                          </div>
-                          <div className="text-[10px] text-gray-500">{log.employee_email}</div>
-                        </td>
-                        <td className="p-3">
-                          <div className="text-white font-medium">{log.topic_name}</div>
-                          <div className="text-[10px] text-gray-500">{log.subject_book}</div>
-                        </td>
-                        <td className="p-3">
-                          <div>{log.task_category}</div>
-                          <div className="text-[10px] text-gray-500">{log.stage}</div>
-                        </td>
-                        <td className="p-3 text-center font-bold text-white">{log.quantity}</td>
-                        <td className="p-3">
-                          {log.proof_url ? (
-                            <a
-                              href={log.proof_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-400 hover:underline inline-flex items-center gap-1"
-                            >
-                              Proof <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ) : (
-                            <span className="text-gray-500">None</span>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                              log.status === "approved"
-                                ? "bg-green-950 text-green-400 border border-green-800"
-                                : log.status === "rejected"
-                                ? "bg-red-950 text-red-400 border border-red-800"
-                                : "bg-yellow-950 text-yellow-400 border border-yellow-800"
-                            }`}
-                          >
-                            {log.status || "pending"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-2">
-                          {log.status !== "approved" && (
-                            <button
-                              onClick={() => handleUpdateStatus(log.id, "approved")}
-                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-md text-[11px] font-semibold transition"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {log.status !== "rejected" && (
-                            <button
-                              onClick={() => handleUpdateStatus(log.id, "rejected")}
-                              className="bg-red-600/80 hover:bg-red-500 text-white px-2.5 py-1 rounded-md text-[11px] font-semibold transition"
-                            >
-                              Reject
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  {logs.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="p-6 text-center text-gray-500">
-                        No work logs available for review.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </main>
-    </div>
+      </div>
+    </main>
   );
 }
