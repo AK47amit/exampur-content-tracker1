@@ -34,7 +34,9 @@ import {
   User,
   Eye,
   Edit3,
-  Search
+  Search,
+  KeyRound,
+  Mail
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -54,6 +56,11 @@ export default function PortalComponent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<"employee" | "admin" | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+
+  // Forgot Password Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [sendingReset, setSendingReset] = useState(false);
 
   // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
@@ -348,6 +355,29 @@ export default function PortalComponent() {
       localStorage.clear();
       sessionStorage.clear();
       window.location.href = "/login";
+    }
+  }
+
+  // Handle Forgot Password Request
+  async function handlePasswordResetRequest(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      alert("Please enter your registered email address.");
+      return;
+    }
+
+    setSendingReset(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/login`,
+    });
+
+    setSendingReset(false);
+    if (error) {
+      alert("Error sending password reset email: " + error.message);
+    } else {
+      alert("Password reset instructions have been sent to your email address!");
+      setShowForgotModal(false);
+      setForgotEmail("");
     }
   }
 
@@ -692,7 +722,6 @@ export default function PortalComponent() {
     }
   }
 
-  // Fixed for BigInt primary key using numeric comparison
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
       "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
@@ -799,13 +828,12 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // FULLY BULLETPROOF Filter 1: Currently Delegated Tasks Search
+  // 100% BULLETPROOF Filter 1: Currently Delegated Tasks Search
   const filteredAssignments = useMemo(() => {
     if (!searchDelegated.trim()) return assignments;
     const q = searchDelegated.toLowerCase().trim();
 
     return assignments.filter((a) => {
-      // Direct lookup from profileEmailMap or profilesList fallback
       const empEmail = (profileEmailMap.get(String(a.assigned_to)) || a.assigned_to || "").toLowerCase();
       const empName = formatUserDisplay(empEmail).toLowerCase();
       const topic = (a.topic_name || "").toLowerCase();
@@ -826,7 +854,7 @@ export default function PortalComponent() {
     });
   }, [assignments, searchDelegated, profileEmailMap]);
 
-  // FULLY BULLETPROOF Filter 2: Queue Filter (Date Filter + Dedicated Searchbar)
+  // 100% BULLETPROOF Filter 2: Queue Filter
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchDate = selectedDateFilter 
@@ -855,7 +883,7 @@ export default function PortalComponent() {
     });
   }, [logs, selectedDateFilter, searchQueue, profileEmailMap]);
 
-  // Robust Filter 3: Master Timesheet Search Filter
+  // Filter 3: Master Timesheet Search Filter
   const filteredTimesheetData = useMemo(() => {
     if (!searchTimesheet.trim()) return masterTimesheetData;
     const q = searchTimesheet.toLowerCase().trim();
@@ -982,14 +1010,26 @@ export default function PortalComponent() {
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              Logout
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
+                title="Reset or Forgot Password"
+              >
+                <KeyRound className="w-3.5 h-3.5 text-orange-400" />
+                Reset Password
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1838,6 +1878,67 @@ export default function PortalComponent() {
           </div>
         )}
 
+        {/* ================= FORGOT PASSWORD MODAL ================= */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden">
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-orange-600/20 text-orange-400 rounded-lg">
+                    <KeyRound className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Reset Password</h3>
+                    <p className="text-[11px] text-slate-400">Receive password reset instructions via email</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePasswordResetRequest} className="p-6 space-y-4 text-xs">
+                <div>
+                  <label className="text-slate-300 block mb-2 font-medium">Your Registered Workspace Email *</label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. amit.biswas@exampur.com"
+                      value={forgotEmail}
+                      onChange={(e) => setForgotEmail(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-white outline-none focus:border-orange-500 text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingReset}
+                    className="px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    {sendingReset ? "Sending Link..." : "Send Reset Link"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* ================= ACTIVE TASKS POPUP MODAL (EMPLOYEE ONLY) ================= */}
         {userRole !== "admin" && showActiveTasksModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
@@ -1864,7 +1965,6 @@ export default function PortalComponent() {
 
               <div className="p-6 overflow-y-auto space-y-6">
                 
-                {/* Section 1: Assigned by Manager */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
@@ -1906,7 +2006,6 @@ export default function PortalComponent() {
                   )}
                 </div>
 
-                {/* Section 2: Under Review Submissions */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
