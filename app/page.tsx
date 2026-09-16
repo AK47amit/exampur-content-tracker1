@@ -609,7 +609,7 @@ export default function PortalComponent() {
               }`}
             >
               <TableProperties className="w-4 h-4" />
-              Manager Master Dashboard (Ashish Sir)
+              Manager Master Dashboard 
             </button>
           )}
         </div>
@@ -1013,7 +1013,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Monthly Master Performance Timesheet Matrix (Ashish Sir) */}
+            {/* Monthly Master Performance Timesheet Matrix  */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-4">
                 <div>
