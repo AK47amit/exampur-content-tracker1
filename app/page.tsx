@@ -34,6 +34,16 @@ import {
   User
 } from "lucide-react";
 
+// Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
+function formatUserDisplay(email: string | undefined | null) {
+  if (!email) return "Employee";
+  const prefix = email.split("@")[0];
+  return prefix
+    .split(".")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export default function PortalComponent() {
   const router = useRouter();
 
@@ -527,7 +537,6 @@ export default function PortalComponent() {
       return;
     }
 
-    // Handles both integer id and uuid safely
     const { error } = await supabase
       .from("task_assignments")
       .delete()
@@ -736,8 +745,11 @@ export default function PortalComponent() {
                 <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
                 New Task Submitted!
               </p>
-              <p className="text-cyan-300 font-mono text-[11px] break-all">{managerToast.employeeEmail}</p>
-              <p className="text-slate-300 mt-1">
+              <p className="text-white font-semibold text-xs">
+                {formatUserDisplay(managerToast.employeeEmail)}
+              </p>
+              <p className="text-cyan-300 font-mono text-[10px] break-all">{managerToast.employeeEmail}</p>
+              <p className="text-slate-300 mt-1 text-[11px]">
                 Topic: <span className="text-white font-medium">{managerToast.topic}</span> ({managerToast.quantity} Qty)
               </p>
             </div>
@@ -753,7 +765,7 @@ export default function PortalComponent() {
 
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Header */}
+        {/* Header with Clean Display Name */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
@@ -765,7 +777,10 @@ export default function PortalComponent() {
 
           <div className="flex items-center gap-4 flex-wrap">
             <div className="text-right">
-              <p className="text-xs text-slate-200 font-medium">{currentUser?.email}</p>
+              <p className="text-sm text-white font-bold tracking-wide">
+                {formatUserDisplay(currentUser?.email)}
+              </p>
+              <p className="text-[11px] text-slate-400 font-mono">{currentUser?.email}</p>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
                 userRole === "admin" ? "bg-purple-950/70 text-purple-300 border-purple-800" : "bg-blue-950/70 text-blue-300 border-blue-800"
               }`}>
@@ -1108,7 +1123,9 @@ export default function PortalComponent() {
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
                   >
                     {profilesList.map((p) => (
-                      <option key={p.id} value={p.id}>{p.email || p.full_name || p.id}</option>
+                      <option key={p.id} value={p.id}>
+                        {formatUserDisplay(p.email)} ({p.email || p.id})
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1223,9 +1240,18 @@ export default function PortalComponent() {
                     <tbody className="divide-y divide-slate-800">
                       {assignments.slice(0, 15).map((a) => {
                         const employee = profilesList.find(p => p.id === a.assigned_to);
+                        const empEmail = employee?.email || a.assigned_to;
+
                         return (
                           <tr key={a.id} className="hover:bg-slate-800/40">
-                            <td className="p-2 text-white font-medium">{employee?.email || a.assigned_to.slice(0, 8)}</td>
+                            <td className="p-2">
+                              <span className="text-white font-medium block">
+                                {formatUserDisplay(empEmail)}
+                              </span>
+                              <span className="text-slate-500 text-[10px] font-mono">
+                                {empEmail.slice(0, 18)}...
+                              </span>
+                            </td>
                             <td className="p-2">
                               <span className="font-semibold text-white">{a.topic_name}</span>
                               <span className="text-slate-500 block text-[10px]">{a.subject_book}</span>
@@ -1292,6 +1318,7 @@ export default function PortalComponent() {
                   onClick={() => {
                     const exportRows = filteredLogs.map((l) => ({
                       Date: l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : "",
+                      Employee_Name: formatUserDisplay(profileEmailMap.get(String(l.user_id))),
                       Employee_Email: profileEmailMap.get(String(l.user_id)) || "",
                       Department: l.department || "",
                       Task_Category: l.task_category || "",
@@ -1323,7 +1350,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Real-time Submissions Queue with Highlighted Submitter Email */}
+            {/* Real-time Submissions Queue with Highlighted Submitter Name & Email */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue
@@ -1353,11 +1380,12 @@ export default function PortalComponent() {
                           <td className="p-3">
                             <div className="font-semibold text-white text-sm">{l.topic_name}</div>
                             <div className="text-[11px] text-slate-400">{l.subject_book}</div>
-                            {/* Distinct Submitter Email Pill in Neon Cyan */}
+                            {/* Distinct Submitter Pill in Neon Cyan with Display Name */}
                             <div className="mt-1.5">
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2 py-0.5 rounded shadow-sm">
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2.5 py-0.5 rounded shadow-sm">
                                 <User className="w-3 h-3 text-cyan-400" />
-                                {submitterEmail}
+                                {formatUserDisplay(submitterEmail)}
+                                <span className="text-[9px] text-cyan-500 font-mono font-normal">({submitterEmail})</span>
                               </span>
                             </div>
                           </td>
@@ -1413,7 +1441,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Monthly Master Performance Timesheet Matrix */}
+            {/* Monthly Master Performance Timesheet Matrix with Clean Names */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-4">
                 <div>
@@ -1435,7 +1463,8 @@ export default function PortalComponent() {
                     onClick={() => {
                       const exportMatrixRows = masterTimesheetData.map((d) => {
                         const rowObj: any = {
-                          Employee: d.email,
+                          Employee_Name: formatUserDisplay(d.email),
+                          Employee_Email: d.email,
                           JoinDate: d.joinDate,
                           TotalUnits: d.monthTotalUnits,
                           DaysPresent: d.totalPresentDays,
@@ -1460,7 +1489,7 @@ export default function PortalComponent() {
                 <table className="w-full text-left text-xs text-slate-300 border-collapse">
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-800">
                     <tr>
-                      <th className="p-2.5 sticky left-0 bg-slate-950 z-20 min-w-[180px]">Employee</th>
+                      <th className="p-2.5 sticky left-0 bg-slate-950 z-20 min-w-[200px]">Employee</th>
                       <th className="p-2.5 text-center min-w-[70px]">Total</th>
                       <th className="p-2.5 text-center min-w-[60px]">Present</th>
                       <th className="p-2.5 text-center min-w-[60px]">Daily Avg</th>
@@ -1472,7 +1501,10 @@ export default function PortalComponent() {
                   <tbody className="divide-y divide-slate-800">
                     {masterTimesheetData.map((row) => (
                       <tr key={row.userId} className="hover:bg-slate-800/40">
-                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">{row.email}</td>
+                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">
+                          <div className="font-semibold text-white">{formatUserDisplay(row.email)}</div>
+                          <div className="text-[10px] text-slate-500 font-mono">{row.email}</div>
+                        </td>
                         <td className="p-2.5 text-center font-bold text-orange-400 bg-slate-950/40">{row.monthTotalUnits}</td>
                         <td className="p-2.5 text-center text-slate-300 font-mono">{row.totalPresentDays}</td>
                         <td className="p-2.5 text-center text-emerald-400 font-semibold font-mono">{row.dailyAvg}</td>
