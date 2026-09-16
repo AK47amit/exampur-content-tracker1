@@ -40,7 +40,6 @@ export default function PortalComponent() {
   // Authentication & Authorization State
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<"employee" | "admin" | null>(null);
-  const [activeTab, setActiveTab] = useState<"employee" | "manager">("employee");
   const [loadingUser, setLoadingUser] = useState(true);
 
   // Active Tasks Modal & Flash Alert State (Employee)
@@ -125,10 +124,8 @@ export default function PortalComponent() {
           return;
         }
         setUserRole("admin");
-        setActiveTab("manager");
       } else {
         setUserRole("employee");
-        setActiveTab("employee");
       }
 
       setLoadingUser(false);
@@ -324,9 +321,9 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // 3. Employee View Flash Alert: Fires whenever Employee View is entered
+  // 3. Employee View Flash Alert: Fires automatically for employees upon login
   useEffect(() => {
-    if (activeTab !== "employee" || !currentUser) return;
+    if (userRole === "admin" || !currentUser) return;
 
     if (myRejectedLogs.length > 0) {
       const recentRejected = myRejectedLogs[0];
@@ -359,7 +356,7 @@ export default function PortalComponent() {
     }, 6000);
 
     return () => clearTimeout(timer);
-  }, [activeTab, currentUser, myRejectedLogs.length, myAssignedTasks.length, myPendingLogs.length]);
+  }, [userRole, currentUser, myRejectedLogs.length, myAssignedTasks.length, myPendingLogs.length]);
 
   function selectTaskToWork(task: any) {
     setDepartment(task.department || "Publications & Testing");
@@ -476,7 +473,7 @@ export default function PortalComponent() {
     }
   }
 
-  // 4. Manager Create Task Assignment
+  // Manager Create Task Assignment
   async function handleAssignTask(e: React.FormEvent) {
     e.preventDefault();
     if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
@@ -666,8 +663,8 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-      {/* 1. Smart Login / Tab Switch Reminder Flash Toast (Employee) */}
-      {flashAlert && flashAlert.show && (
+      {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
+      {userRole !== "admin" && flashAlert && flashAlert.show && (
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
           <div className={`p-4 rounded-xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
             flashAlert.type === "rejected"
@@ -693,7 +690,7 @@ export default function PortalComponent() {
         </div>
       )}
 
-      {/* 2. Real-time Inbound Submission Flash Toast (Manager) */}
+      {/* 2. Real-time Inbound Submission Flash Toast (Strictly for Manager) */}
       {userRole === "admin" && managerToast && managerToast.show && (
         <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
           <div className="p-4 rounded-xl shadow-2xl border bg-slate-900/95 border-cyan-500/70 text-cyan-200 flex items-start gap-3 backdrop-blur-md">
@@ -753,34 +750,24 @@ export default function PortalComponent() {
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex bg-slate-900 border border-slate-800 p-1 rounded-lg w-fit">
-          <button
-            type="button"
-            onClick={() => setActiveTab("employee")}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition cursor-pointer ${
-              activeTab === "employee" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"
-            }`}
-          >
-            Employee View
-          </button>
-
-          {userRole === "admin" && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("manager")}
-              className={`px-4 py-2 text-sm font-medium rounded-md transition cursor-pointer flex items-center gap-2 ${
-                activeTab === "manager" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <TableProperties className="w-4 h-4" />
-              Manager Master Dashboard
-            </button>
+        {/* Dedicated Workspace Identity Badge (No confusing tab switcher) */}
+        <div className="flex items-center gap-2">
+          {userRole === "admin" ? (
+            <div className="inline-flex items-center gap-2 bg-slate-900 border border-purple-800/60 px-4 py-2 rounded-lg text-xs font-semibold text-purple-300">
+              <TableProperties className="w-4 h-4 text-purple-400" />
+              Executive Audit & Delegation Console
+            </div>
+          ) : (
+            <div className="inline-flex items-center gap-2 bg-slate-900 border border-orange-800/60 px-4 py-2 rounded-lg text-xs font-semibold text-orange-300">
+              <Send className="w-4 h-4 text-orange-400" />
+              Employee Daily Workspace
+            </div>
           )}
         </div>
 
-        {/* ================= EMPLOYEE VIEW ================= */}
-        {activeTab === "employee" ? (
+        {/* ================= CONDITIONAL WORKSPACE ROUTING ================= */}
+        {userRole !== "admin" ? (
+          /* ================= EMPLOYEE VIEW (Strictly for Employees) ================= */
           <div className="space-y-8 max-w-4xl mx-auto">
             
             {/* Employee Operational KPI Cards */}
@@ -1041,7 +1028,7 @@ export default function PortalComponent() {
             </div>
           </div>
         ) : (
-          /* ================= MANAGER MASTER DASHBOARD ================= */
+          /* ================= MANAGER MASTER DASHBOARD (Strictly for Admin) ================= */
           <div className="space-y-8">
             
             {/* Metric Summary Cards */}
@@ -1452,8 +1439,8 @@ export default function PortalComponent() {
           </div>
         )}
 
-        {/* ================= ACTIVE TASKS POPUP MODAL ================= */}
-        {showActiveTasksModal && (
+        {/* ================= ACTIVE TASKS POPUP MODAL (EMPLOYEE ONLY) ================= */}
+        {userRole !== "admin" && showActiveTasksModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
               
