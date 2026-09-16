@@ -22,7 +22,11 @@ import {
   Paperclip,
   ExternalLink,
   FileText,
-  Trash2
+  Trash2,
+  UserPlus,
+  Briefcase,
+  CheckSquare,
+  BookOpen
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -34,14 +38,14 @@ export default function PortalComponent() {
   const [activeTab, setActiveTab] = useState<"employee" | "manager">("employee");
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // Work Logs, Attendance & Profiles State
+  // Work Logs, Attendance, Profiles & Assignments State
   const [logs, setLogs] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
   const [profilesList, setProfilesList] = useState<any[]>([]);
+  const [assignments, setAssignments] = useState<any[]>([]);
 
   // Filter State (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
-  // Default to current Month: "YYYY-MM"
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -56,6 +60,18 @@ export default function PortalComponent() {
   const [quantity, setQuantity] = useState("");
   const [fileAttachments, setFileAttachments] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+
+  // Manager Assignment Form State
+  const [assigneeId, setAssigneeId] = useState("");
+  const [assignDept, setAssignDept] = useState("Publications & Testing");
+  const [assignCategory, setAssignCategory] = useState("Question Formation");
+  const [assignStage, setAssignStage] = useState("Proof 1");
+  const [assignSubject, setAssignSubject] = useState("");
+  const [assignTopic, setAssignTopic] = useState("");
+  const [assignQty, setAssignQty] = useState("");
+  const [assignDeadline, setAssignDeadline] = useState("");
+  const [assigning, setAssigning] = useState(false);
 
   // 1. Session Lifecycle, Role Verification & Domain Check
   useEffect(() => {
@@ -112,44 +128,33 @@ export default function PortalComponent() {
     fetchLogs();
     fetchAttendance();
     fetchProfiles();
+    fetchAssignments();
 
     const logsChannel = supabase
       .channel("realtime-work-logs")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "work_logs" },
-        () => {
-          fetchLogs();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_logs" }, () => fetchLogs())
       .subscribe();
 
     const attendanceChannel = supabase
       .channel("realtime-attendance")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "attendance" },
-        () => {
-          fetchAttendance();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance" }, () => fetchAttendance())
       .subscribe();
 
     const profilesChannel = supabase
       .channel("realtime-profiles")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "profiles" },
-        () => {
-          fetchProfiles();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchProfiles())
+      .subscribe();
+
+    const assignmentsChannel = supabase
+      .channel("realtime-assignments")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_assignments" }, () => fetchAssignments())
       .subscribe();
 
     return () => {
       supabase.removeChannel(logsChannel);
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(profilesChannel);
+      supabase.removeChannel(assignmentsChannel);
     };
   }, [currentUser]);
 
@@ -166,7 +171,20 @@ export default function PortalComponent() {
       .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
-    if (data) setProfilesList(data);
+    if (data) {
+      setProfilesList(data);
+      if (data.length > 0 && !assigneeId) {
+        setAssigneeId(data[0].id);
+      }
+    }
+  }
+
+  async function fetchAssignments() {
+    const { data } = await supabase
+      .from("task_assignments")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setAssignments(data);
   }
 
   async function fetchAttendance() {
@@ -177,37 +195,23 @@ export default function PortalComponent() {
 
     if (!attData) return;
 
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("*");
-
+    const { data: profiles } = await supabase.from("profiles").select("*");
     const profileMap = new Map();
     if (profiles) {
       profiles.forEach((p: any) => {
         const identifier = p.email || p.full_name || p.username;
-        if (identifier) {
-          profileMap.set(String(p.id), identifier);
-        }
+        if (identifier) profileMap.set(String(p.id), identifier);
       });
     }
 
-    const resolved = attData.map((rec) => {
-      let displayName = profileMap.get(String(rec.user_id));
-
-      if (!displayName && currentUser && String(rec.user_id) === String(currentUser.id)) {
-        displayName = currentUser.email;
-      }
-
-      return {
-        ...rec,
-        user_display: displayName || `Employee (${String(rec.user_id).slice(0, 8)}...)`,
-      };
-    });
+    const resolved = attData.map((rec) => ({
+      ...rec,
+      user_display: profileMap.get(String(rec.user_id)) || (currentUser && String(rec.user_id) === String(currentUser.id) ? currentUser.email : `Employee (${String(rec.user_id).slice(0, 8)}...)`),
+    }));
 
     setAttendanceRecords(resolved);
   }
 
-  // 3. Manual Logout Handler
   async function handleLogout() {
     try {
       await supabase.auth.signOut();
@@ -220,45 +224,53 @@ export default function PortalComponent() {
     }
   }
 
-  // Helper to parse attachment URLs
   function parseAttachmentUrls(urlField: string | null | undefined): string[] {
     if (!urlField) return [];
     try {
-      if (urlField.startsWith("[")) {
-        return JSON.parse(urlField);
-      }
+      if (urlField.startsWith("[")) return JSON.parse(urlField);
       return urlField.split(",").map((s) => s.trim()).filter(Boolean);
     } catch {
       return [urlField];
     }
   }
 
-  // 4. Strict Work Submission Handler with 3MB Single & 10MB Batch Quota Checks
+  // Employee-Specific Submissions & Dynamic Remembering of Books
+  const myPersonalLogs = useMemo(() => {
+    return logs.filter((log) => currentUser && String(log.user_id) === String(currentUser.id));
+  }, [logs, currentUser]);
+
+  // Unique remembered books for current employee
+  const myRememberedBooks = useMemo(() => {
+    const set = new Set<string>();
+    myPersonalLogs.forEach((l) => {
+      if (l.subject_book && l.subject_book.trim()) set.add(l.subject_book.trim());
+    });
+    return Array.from(set);
+  }, [myPersonalLogs]);
+
+  // Tasks assigned to currently logged-in employee
+  const myAssignedTasks = useMemo(() => {
+    return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
+  }, [assignments, currentUser]);
+
+  // Quick autofill when employee clicks "Work on Task"
+  function selectTaskToWork(task: any) {
+    setDepartment(task.department || "Publications & Testing");
+    setTaskCategory(task.task_category || "Question Formation");
+    setStage(task.stage || "Proof 1");
+    setSubjectBook(task.subject_book || "");
+    setTopicName(task.topic_name || "");
+    setQuantity(String(task.target_quantity || ""));
+    setCompletingTaskId(task.id);
+    window.scrollTo({ top: 350, behavior: "smooth" });
+  }
+
+  // 4. Strict Work Submission Handler
   async function handleWorkSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!department.trim()) {
-      alert("Please select a Department.");
-      return;
-    }
-
-    if (department === "Publications & Testing" && !taskCategory.trim()) {
-      alert("Please select a Task Type.");
-      return;
-    }
-
-    if (department === "Publications & Testing" && taskCategory === "Proofing" && !stage.trim()) {
-      alert("Please select a Proofing Stage.");
-      return;
-    }
-
-    if (!subjectBook.trim()) {
-      alert("Please fill in Subject / Book Name.");
-      return;
-    }
-
-    if (!topicName.trim()) {
-      alert("Please fill in Topic / Chapter Name.");
+    if (!department.trim() || !subjectBook.trim() || !topicName.trim()) {
+      alert("Please fill in Department, Subject/Book, and Topic.");
       return;
     }
 
@@ -268,34 +280,23 @@ export default function PortalComponent() {
       return;
     }
 
-    // MANDATORY PROOF ATTACHMENT
     if (!fileAttachments || fileAttachments.length === 0) {
-      alert("Proof attachment is mandatory! Please attach at least 1 file (PDF, Screenshot, or Photo).");
+      alert("Proof attachment is mandatory! Please attach at least 1 file (PDF or Image).");
       return;
     }
 
-    // Individual File Size Limit (Max 3MB per file)
     const MAX_FILE_SIZE = 3 * 1024 * 1024;
     for (let i = 0; i < fileAttachments.length; i++) {
       if (fileAttachments[i].size > MAX_FILE_SIZE) {
-        alert(
-          `File "${fileAttachments[i].name}" (${(fileAttachments[i].size / (1024 * 1024)).toFixed(
-            2
-          )}MB) exceeds the 3MB limit! Please compress or choose a smaller file.`
-        );
+        alert(`File "${fileAttachments[i].name}" exceeds 3MB! Please compress.`);
         return;
       }
     }
 
-    // Total Batch Size Limit (Max 10MB across all files)
-    const MAX_TOTAL_BATCH_SIZE = 10 * 1024 * 1024;
-    const totalBatchBytes = fileAttachments.reduce((sum, file) => sum + file.size, 0);
-    if (totalBatchBytes > MAX_TOTAL_BATCH_SIZE) {
-      alert(
-        `Total attachments size is ${(totalBatchBytes / (1024 * 1024)).toFixed(
-          2
-        )}MB, which exceeds the 10MB limit! Please attach fewer files.`
-      );
+    const MAX_TOTAL_BATCH = 10 * 1024 * 1024;
+    const totalBytes = fileAttachments.reduce((sum, f) => sum + f.size, 0);
+    if (totalBytes > MAX_TOTAL_BATCH) {
+      alert("Total batch size exceeds 10MB limit!");
       return;
     }
 
@@ -312,25 +313,16 @@ export default function PortalComponent() {
 
         const { error: uploadError } = await supabase.storage
           .from("work-proofs")
-          .upload(filePath, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
+          .upload(filePath, file, { cacheControl: "3600", upsert: false });
 
         if (uploadError) {
-          console.error("Upload error:", uploadError);
-          alert(`File "${file.name}" upload failed: ${uploadError.message}`);
+          alert(`File upload failed: ${uploadError.message}`);
           setSubmitting(false);
           return;
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from("work-proofs")
-          .getPublicUrl(filePath);
-
-        if (publicUrlData?.publicUrl) {
-          uploadedUrls.push(publicUrlData.publicUrl);
-        }
+        const { data: publicUrlData } = supabase.storage.from("work-proofs").getPublicUrl(filePath);
+        if (publicUrlData?.publicUrl) uploadedUrls.push(publicUrlData.publicUrl);
       }
     } catch (err: any) {
       alert("Upload error: " + err.message);
@@ -352,6 +344,16 @@ export default function PortalComponent() {
       },
     ]);
 
+    // If submitted via assigned task, mark assigned task as completed
+    if (!error && completingTaskId) {
+      await supabase
+        .from("task_assignments")
+        .update({ status: "completed" })
+        .eq("id", completingTaskId);
+      setCompletingTaskId(null);
+      fetchAssignments();
+    }
+
     setSubmitting(false);
     if (!error) {
       setSubjectBook("");
@@ -361,10 +363,47 @@ export default function PortalComponent() {
       const fileInput = document.getElementById("file-upload-input") as HTMLInputElement;
       if (fileInput) fileInput.value = "";
 
-      alert(`Work log with ${uploadedUrls.length} attachment(s) submitted successfully!`);
+      alert(`Work log submitted successfully! Proof attached.`);
       fetchLogs();
     } else {
       alert("Error: " + error.message);
+    }
+  }
+
+  // 5. Manager Create Task Assignment
+  async function handleAssignTask(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
+      alert("Please fill in all assignment details.");
+      return;
+    }
+
+    setAssigning(true);
+    const { error } = await supabase.from("task_assignments").insert([
+      {
+        assigned_to: assigneeId,
+        assigned_by: currentUser?.id,
+        department: assignDept,
+        task_category: assignDept === "DTP" ? "DTP Work" : assignCategory,
+        stage: assignDept === "Publications & Testing" && assignCategory === "Proofing" ? assignStage : null,
+        subject_book: assignSubject.trim(),
+        topic_name: assignTopic.trim(),
+        target_quantity: parseInt(assignQty),
+        deadline: assignDeadline || null,
+        status: "assigned"
+      }
+    ]);
+
+    setAssigning(false);
+    if (error) {
+      alert("Failed to assign task: " + error.message);
+    } else {
+      alert("Task assigned successfully to the employee!");
+      setAssignSubject("");
+      setAssignTopic("");
+      setAssignQty("");
+      setAssignDeadline("");
+      fetchAssignments();
     }
   }
 
@@ -388,17 +427,13 @@ export default function PortalComponent() {
     }
   }
 
-  // 5. Manager Master Action: Wipe / Clear All Work Logs with Strict Confirmation
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
       "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
     );
     if (!isFirstConfirmed) return;
 
-    const userInput = prompt(
-      "Type 'RESET' in capital letters to confirm permanent deletion of all work logs:"
-    );
-
+    const userInput = prompt("Type 'RESET' in capital letters to confirm permanent deletion of all work logs:");
     if (userInput !== "RESET") {
       alert("Reset cancelled. Verification text did not match.");
       return;
@@ -409,15 +444,13 @@ export default function PortalComponent() {
       .delete()
       .neq("id", "00000000-0000-0000-0000-000000000000");
 
-    if (error) {
-      alert("Error clearing logs: " + error.message);
-    } else {
-      alert("All work logs have been successfully wiped. The dashboard is now clean for fresh operations.");
+    if (error) alert("Error clearing logs: " + error.message);
+    else {
+      alert("All work logs have been successfully wiped.");
       fetchLogs();
     }
   }
 
-  // CSV Export Utility
   function exportToCSV(filename: string, rows: object[]) {
     if (!rows || !rows.length) {
       alert("No data available to export!");
@@ -429,32 +462,26 @@ export default function PortalComponent() {
       keys.join(separator) +
       "\n" +
       rows
-        .map((row: any) => {
-          return keys
+        .map((row: any) =>
+          keys
             .map((k) => {
               let cell = row[k] === null || row[k] === undefined ? "" : row[k];
               cell = String(cell).replace(/"/g, '""');
-              if (String(cell).search(/("|,|\n)/g) >= 0) {
-                cell = `"${cell}"`;
-              }
-              return cell;
+              return cell.search(/("|,|\n)/g) >= 0 ? `"${cell}"` : cell;
             })
-            .join(separator);
-        })
+            .join(separator)
+        )
         .join("\n");
 
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
+    link.href = URL.createObjectURL(blob);
     link.setAttribute("download", `${filename}.csv`);
-    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   }
 
-  // Days in Selected Month
   const monthDays = useMemo(() => {
     const [yearStr, monthStr] = selectedMonthFilter.split("-");
     const year = parseInt(yearStr);
@@ -463,65 +490,33 @@ export default function PortalComponent() {
     return Array.from({ length: daysInMonth }, (_, i) => i + 1);
   }, [selectedMonthFilter]);
 
-  // Master Timesheet calculation
   const masterTimesheetData = useMemo(() => {
     const userMap = new Map<string, { email: string; createdAt?: string }>();
-    
     profilesList.forEach((p) => {
       if (p.id && !p.id.startsWith("00000000")) {
-        userMap.set(String(p.id), {
-          email: p.email || p.full_name || "Employee",
-          createdAt: p.created_at,
-        });
+        userMap.set(String(p.id), { email: p.email || p.full_name || "Employee", createdAt: p.created_at });
       }
     });
 
-    if (currentUser && !currentUser.id.startsWith("00000000")) {
-      userMap.set(String(currentUser.id), {
-        email: currentUser.email,
-        createdAt: currentUser.created_at,
-      });
-    }
-
-    logs.forEach((l) => {
-      if (l.user_id && !l.user_id.startsWith("00000000") && !userMap.has(String(l.user_id))) {
-        userMap.set(String(l.user_id), {
-          email: `Employee (${String(l.user_id).slice(0, 8)}...)`,
-        });
-      }
-    });
-
-    const monthLogs = logs.filter((l) => {
-      if (!l.created_at) return false;
-      const logLocalDate = new Date(l.created_at).toLocaleDateString("en-CA");
-      return logLocalDate.startsWith(selectedMonthFilter);
-    });
-
-    const monthAtt = attendanceRecords.filter((a) => {
-      if (!a.attendance_date) return false;
-      return a.attendance_date.startsWith(selectedMonthFilter);
-    });
+    const monthLogs = logs.filter((l) => l.created_at && new Date(l.created_at).toLocaleDateString("en-CA").startsWith(selectedMonthFilter));
+    const monthAtt = attendanceRecords.filter((a) => a.attendance_date && a.attendance_date.startsWith(selectedMonthFilter));
 
     return Array.from(userMap.entries()).map(([userId, userInfo]) => {
       const dailyUnits: { [day: number]: number } = {};
       monthDays.forEach((d) => (dailyUnits[d] = 0));
-
       let monthTotalUnits = 0;
 
       monthLogs
         .filter((l) => String(l.user_id) === userId && l.status === "approved")
         .forEach((log) => {
-          const logDate = new Date(log.created_at);
-          const day = logDate.getDate();
+          const day = new Date(log.created_at).getDate();
           const qty = Number(log.quantity) || 0;
           dailyUnits[day] = (dailyUnits[day] || 0) + qty;
           monthTotalUnits += qty;
         });
 
       const userPresentDates = new Set(
-        monthAtt
-          .filter((a) => String(a.user_id) === userId && a.status === "PRESENT")
-          .map((a) => a.attendance_date)
+        monthAtt.filter((a) => String(a.user_id) === userId && a.status === "PRESENT").map((a) => a.attendance_date)
       );
       const totalPresentDays = userPresentDates.size;
       const dailyAvg = totalPresentDays > 0 ? (monthTotalUnits / totalPresentDays).toFixed(1) : "0";
@@ -536,28 +531,13 @@ export default function PortalComponent() {
         dailyAvg,
       };
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
-  }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays, currentUser]);
+  }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // Real-time Queue Date Filtering (Local Timezone Normalized)
   const filteredLogs = useMemo(() => {
     if (!selectedDateFilter) return logs;
-    return logs.filter((log) => {
-      if (!log.created_at) return false;
-      const logLocalDate = new Date(log.created_at).toLocaleDateString("en-CA");
-      return logLocalDate === selectedDateFilter;
-    });
+    return logs.filter((log) => log.created_at && new Date(log.created_at).toLocaleDateString("en-CA") === selectedDateFilter);
   }, [logs, selectedDateFilter]);
 
-  const filteredAttendance = useMemo(() => {
-    if (!selectedDateFilter) return attendanceRecords;
-    return attendanceRecords.filter((rec) => rec.attendance_date === selectedDateFilter);
-  }, [attendanceRecords, selectedDateFilter]);
-
-  const myPersonalLogs = logs.filter(
-    (log) => currentUser && String(log.user_id) === String(currentUser.id)
-  );
-
-  // Overall Manager Summary Metrics
   const summaryMetrics = useMemo(() => {
     const totalCount = logs.length;
     const approvedCount = logs.filter((l) => l.status === "approved").length;
@@ -590,19 +570,15 @@ export default function PortalComponent() {
               <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-mono">EXAMPUR</span>
               Content Operations & Work Audit Portal
             </h1>
-            <p className="text-slate-400 text-sm mt-1">Real-time Daily Performance Matrix, Dynamic Timesheet & Verification</p>
+            <p className="text-slate-400 text-sm mt-1">Real-time Daily Performance Matrix, Delegation & Verification</p>
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">
             <div className="text-right">
               <p className="text-xs text-slate-200 font-medium">{currentUser?.email}</p>
-              <span
-                className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
-                  userRole === "admin"
-                    ? "bg-purple-950/70 text-purple-300 border-purple-800"
-                    : "bg-blue-950/70 text-blue-300 border-blue-800"
-                }`}
-              >
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
+                userRole === "admin" ? "bg-purple-950/70 text-purple-300 border-purple-800" : "bg-blue-950/70 text-blue-300 border-blue-800"
+              }`}>
                 {userRole === "admin" ? "Manager (Admin)" : "Employee"}
               </span>
             </div>
@@ -647,6 +623,67 @@ export default function PortalComponent() {
         {/* ================= EMPLOYEE VIEW ================= */}
         {activeTab === "employee" ? (
           <div className="space-y-8 max-w-4xl mx-auto">
+            
+            {/* Employee Operational KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-slate-400 font-medium">My Active Tasks (Pending/Assigned)</p>
+                <p className="text-2xl font-bold text-orange-400 mt-1">
+                  {myAssignedTasks.length + myPersonalLogs.filter(l => l.status === "pending").length}
+                </p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
+                <p className="text-2xl font-bold text-emerald-400 mt-1">
+                  {myPersonalLogs.filter(l => l.status === "approved").length}
+                </p>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
+                <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
+                <p className="text-2xl font-bold text-blue-400 mt-1">
+                  {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Manager Assigned Tasks Tray */}
+            {myAssignedTasks.length > 0 && (
+              <div className="bg-slate-900 border border-orange-500/40 rounded-xl p-5 space-y-4 shadow-xl">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-orange-400">
+                    <Briefcase className="w-4 h-4 text-orange-500" />
+                    Tasks Assigned to You by Manager ({myAssignedTasks.length})
+                  </h3>
+                  <span className="text-[11px] text-slate-400">Click &quot;Work on Task&quot; to auto-fill form</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {myAssignedTasks.map((task) => (
+                    <div key={task.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-lg space-y-2">
+                      <div className="flex justify-between items-start">
+                        <span className="text-xs font-bold text-white">{task.topic_name}</span>
+                        <span className="text-[10px] bg-orange-950 text-orange-300 border border-orange-800 px-1.5 py-0.5 rounded font-mono">
+                          Target: {task.target_quantity}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-400">Book: {task.subject_book} ({task.task_category})</p>
+                      {task.deadline && (
+                        <p className="text-[10px] text-amber-400 font-mono">Deadline: {task.deadline}</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => selectTaskToWork(task)}
+                        className="w-full mt-2 py-1.5 bg-orange-600/30 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-700/60 rounded text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <CheckSquare className="w-3.5 h-3.5" />
+                        {completingTaskId === task.id ? "Working on this..." : "Work on Task"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Submission Form */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -659,9 +696,7 @@ export default function PortalComponent() {
 
               <form onSubmit={handleWorkSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Department <span className="text-rose-500">*</span>
-                  </label>
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">Department <span className="text-rose-500">*</span></label>
                   <select
                     required
                     value={department}
@@ -675,9 +710,7 @@ export default function PortalComponent() {
 
                 {department === "Publications & Testing" && (
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">
-                      Task Type <span className="text-rose-500">*</span>
-                    </label>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">Task Type <span className="text-rose-500">*</span></label>
                     <select
                       required
                       value={taskCategory}
@@ -696,9 +729,7 @@ export default function PortalComponent() {
 
                 {department === "Publications & Testing" && taskCategory === "Proofing" && (
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">
-                      Proofing Stage <span className="text-rose-500">*</span>
-                    </label>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">Proofing Stage <span className="text-rose-500">*</span></label>
                     <select
                       required
                       value={stage}
@@ -712,24 +743,36 @@ export default function PortalComponent() {
                   </div>
                 )}
 
+                {/* Smart Subject / Book Name with Dropdown memory + Custom Input */}
                 <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Subject / Book Name <span className="text-rose-500">*</span>
-                  </label>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-slate-300 font-medium">
+                      Subject / Book Name <span className="text-rose-500">*</span>
+                    </label>
+                    {myRememberedBooks.length > 0 && (
+                      <span className="text-[10px] text-orange-400 font-mono">
+                        {myRememberedBooks.length} Saved Books
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    list="remembered-books"
                     required
-                    placeholder="e.g., RRB Maths Practice Set"
+                    placeholder="Type or select from your past books..."
                     value={subjectBook}
                     onChange={(e) => setSubjectBook(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
                   />
+                  <datalist id="remembered-books">
+                    {myRememberedBooks.map((book, idx) => (
+                      <option key={idx} value={book} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Topic / Chapter Name <span className="text-rose-500">*</span>
-                  </label>
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">Topic / Chapter Name <span className="text-rose-500">*</span></label>
                   <input
                     type="text"
                     required
@@ -741,9 +784,7 @@ export default function PortalComponent() {
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Quantity Completed <span className="text-rose-500">*</span>
-                  </label>
+                  <label className="text-xs text-slate-300 block mb-2 font-medium">Quantity Completed <span className="text-rose-500">*</span></label>
                   <input
                     type="number"
                     required
@@ -768,21 +809,20 @@ export default function PortalComponent() {
                     onChange={(e) => {
                       if (!e.target.files) return;
                       const selected = Array.from(e.target.files);
-
                       const MAX_SINGLE = 3 * 1024 * 1024;
                       const MAX_BATCH = 10 * 1024 * 1024;
 
                       const oversizedFile = selected.find((f) => f.size > MAX_SINGLE);
                       if (oversizedFile) {
-                        alert(`File "${oversizedFile.name}" exceeds the 3MB limit! Please compress or select another file.`);
+                        alert(`File "${oversizedFile.name}" exceeds 3MB limit!`);
                         e.target.value = "";
                         setFileAttachments([]);
                         return;
                       }
 
-                      const totalBytes = selected.reduce((acc, f) => acc + f.size, 0);
-                      if (totalBytes > MAX_BATCH) {
-                        alert(`Total batch size exceeds 10MB! Please select fewer files.`);
+                      const total = selected.reduce((acc, f) => acc + f.size, 0);
+                      if (total > MAX_BATCH) {
+                        alert("Total batch size exceeds 10MB limit!");
                         e.target.value = "";
                         setFileAttachments([]);
                         return;
@@ -792,7 +832,6 @@ export default function PortalComponent() {
                     }}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">Accepts images (PNG, JPG) and PDF documents up to 3MB each (Max 10MB total).</p>
                 </div>
 
                 <div className="md:col-span-2">
@@ -802,7 +841,7 @@ export default function PortalComponent() {
                     className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
-                    {submitting ? "Uploading & Submitting..." : "Submit Daily Work Log"}
+                    {submitting ? "Uploading Proof & Submitting..." : (completingTaskId ? "Submit Proof & Complete Assigned Task" : "Submit Daily Work Log")}
                   </button>
                 </div>
               </form>
@@ -838,27 +877,17 @@ export default function PortalComponent() {
                         <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
                         <td className="p-3">
                           {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2"
-                            >
+                            <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
                               Proof {i + 1} <ExternalLink className="w-3 h-3" />
                             </a>
                           ))}
                         </td>
                         <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              l.status === "approved"
-                                ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                                : l.status === "rejected"
-                                ? "bg-rose-950 text-rose-400 border border-rose-800"
-                                : "bg-amber-950 text-amber-400 border border-amber-800"
-                            }`}
-                          >
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
+                            l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
+                            "bg-amber-950 text-amber-400 border border-amber-800"
+                          }`}>
                             {l.status || "pending"}
                           </span>
                         </td>
@@ -866,9 +895,7 @@ export default function PortalComponent() {
                     ))}
                     {myPersonalLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500">
-                          No submissions logged yet today.
-                        </td>
+                        <td colSpan={5} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
                       </tr>
                     )}
                   </tbody>
@@ -879,6 +906,7 @@ export default function PortalComponent() {
         ) : (
           /* ================= MANAGER MASTER DASHBOARD ================= */
           <div className="space-y-8">
+            
             {/* Metric Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
@@ -898,12 +926,124 @@ export default function PortalComponent() {
                 <p className="text-2xl font-bold text-rose-400 mt-1">{summaryMetrics.rejectedCount}</p>
               </div>
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 md:col-span-1">
-                <p className="text-xs text-orange-400 font-medium">Approved Units Output</p>
+                <p className="text-xs text-orange-400 font-medium">Approved Output</p>
                 <p className="text-2xl font-bold text-orange-400 mt-1">{summaryMetrics.totalUnitsProduced}</p>
               </div>
             </div>
 
-            {/* Filter Bar with CSV Export & Wipe Logs Option */}
+            {/* Manager Task Delegation Window */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
+              <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
+                  <UserPlus className="w-4 h-4 text-orange-500" /> Delegate Task to Registered Employee
+                </h3>
+                <span className="text-xs text-slate-400">{profilesList.length} Registered Team Members</span>
+              </div>
+
+              <form onSubmit={handleAssignTask} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Assign To Employee *</label>
+                  <select
+                    value={assigneeId}
+                    onChange={(e) => setAssigneeId(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                  >
+                    {profilesList.map((p) => (
+                      <option key={p.id} value={p.id}>{p.email || p.full_name || p.id}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Department *</label>
+                  <select
+                    value={assignDept}
+                    onChange={(e) => setAssignDept(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                  >
+                    <option value="Publications & Testing">Publications & Testing</option>
+                    <option value="DTP">DTP</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
+                  <select
+                    value={assignCategory}
+                    onChange={(e) => setAssignCategory(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                  >
+                    <option value="Question Formation">Question Formation</option>
+                    <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
+                    <option value="Proofing">Proofing</option>
+                    <option value="Solution Drafting">Solution Drafting</option>
+                    <option value="Translation">Translation</option>
+                    <option value="Review / Fact Check">Review / Fact Check</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Target Quantity *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    placeholder="e.g. 50"
+                    value={assignQty}
+                    onChange={(e) => setAssignQty(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Subject / Book Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. RRB Reasoning"
+                    value={assignSubject}
+                    onChange={(e) => setAssignSubject(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Topic / Chapter Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Coding Decoding Part 1"
+                    value={assignTopic}
+                    onChange={(e) => setAssignTopic(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 block mb-1 font-medium">Deadline (Optional)</label>
+                  <input
+                    type="date"
+                    value={assignDeadline}
+                    onChange={(e) => setAssignDeadline(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                  />
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="submit"
+                    disabled={assigning}
+                    className="w-full py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    {assigning ? "Assigning..." : "Assign Task"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Filter Bar with CSV Export & Reset Option */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -933,7 +1073,6 @@ export default function PortalComponent() {
                   onClick={() => {
                     const exportRows = filteredLogs.map((l) => ({
                       Date: l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : "",
-                      Employee_Email: l.employee_email || "",
                       Department: l.department || "",
                       Task_Category: l.task_category || "",
                       Stage: l.stage || "",
@@ -952,7 +1091,6 @@ export default function PortalComponent() {
                   Export CSV
                 </button>
 
-                {/* Reset / Clear All Logs Button */}
                 <button
                   type="button"
                   onClick={handleClearAllLogs}
@@ -1000,27 +1138,17 @@ export default function PortalComponent() {
                         <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
                         <td className="p-3">
                           {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                            <a
-                              key={i}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2"
-                            >
+                            <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
                               Proof {i + 1} <ExternalLink className="w-3 h-3" />
                             </a>
                           ))}
                         </td>
                         <td className="p-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              l.status === "approved"
-                                ? "bg-emerald-950 text-emerald-400 border border-emerald-800"
-                                : l.status === "rejected"
-                                ? "bg-rose-950 text-rose-400 border border-rose-800"
-                                : "bg-amber-950 text-amber-400 border border-amber-800"
-                            }`}
-                          >
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
+                            l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
+                            "bg-amber-950 text-amber-400 border border-amber-800"
+                          }`}>
                             {l.status || "pending"}
                           </span>
                         </td>
@@ -1046,9 +1174,7 @@ export default function PortalComponent() {
                     ))}
                     {filteredLogs.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-slate-500">
-                          No logs found for the selected period.
-                        </td>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">No logs found for the selected period.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1115,27 +1241,14 @@ export default function PortalComponent() {
                   <tbody className="divide-y divide-slate-800">
                     {masterTimesheetData.map((row) => (
                       <tr key={row.userId} className="hover:bg-slate-800/40">
-                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">
-                          {row.email}
-                        </td>
-                        <td className="p-2.5 text-center font-bold text-orange-400 bg-slate-950/40">
-                          {row.monthTotalUnits}
-                        </td>
-                        <td className="p-2.5 text-center text-slate-300 font-mono">
-                          {row.totalPresentDays}
-                        </td>
-                        <td className="p-2.5 text-center text-emerald-400 font-semibold font-mono">
-                          {row.dailyAvg}
-                        </td>
+                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">{row.email}</td>
+                        <td className="p-2.5 text-center font-bold text-orange-400 bg-slate-950/40">{row.monthTotalUnits}</td>
+                        <td className="p-2.5 text-center text-slate-300 font-mono">{row.totalPresentDays}</td>
+                        <td className="p-2.5 text-center text-emerald-400 font-semibold font-mono">{row.dailyAvg}</td>
                         {monthDays.map((day) => {
                           const units = row.dailyUnits[day];
                           return (
-                            <td
-                              key={day}
-                              className={`p-2 text-center text-[11px] font-mono ${
-                                units > 0 ? "text-white font-bold bg-slate-800/60" : "text-slate-600"
-                              }`}
-                            >
+                            <td key={day} className={`p-2 text-center text-[11px] font-mono ${units > 0 ? "text-white font-bold bg-slate-800/60" : "text-slate-600"}`}>
                               {units > 0 ? units : "-"}
                             </td>
                           );
@@ -1144,9 +1257,7 @@ export default function PortalComponent() {
                     ))}
                     {masterTimesheetData.length === 0 && (
                       <tr>
-                        <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">
-                          No timesheet data recorded for this month.
-                        </td>
+                        <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">No timesheet data recorded for this month.</td>
                       </tr>
                     )}
                   </tbody>
