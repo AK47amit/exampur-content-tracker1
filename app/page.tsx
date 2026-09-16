@@ -33,7 +33,8 @@ import {
   AlertTriangle,
   User,
   Eye,
-  Edit3
+  Edit3,
+  Search
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -78,9 +79,13 @@ export default function PortalComponent() {
   const [profilesList, setProfilesList] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
 
+  // Search States for the 3 Admin Panels
+  const [searchDelegated, setSearchDelegated] = useState("");
+  const [searchQueue, setSearchQueue] = useState("");
+  const [searchTimesheet, setSearchTimesheet] = useState("");
+
   // Filter State (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
-  // Default to current Month: "YYYY-MM"
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -422,7 +427,7 @@ export default function PortalComponent() {
 
   // 4. Employee Login Flash Alert
   useEffect(() => {
-    if (userRole === "admin" || !currentUser) return;
+    if (userRole !== "admin" || !currentUser) return;
 
     if (myRejectedLogs.length > 0) {
       const recentRejected = myRejectedLogs[0];
@@ -469,7 +474,6 @@ export default function PortalComponent() {
     window.scrollTo({ top: 350, behavior: "smooth" });
   }
 
-  // Load an existing log back into the form for correction
   function handleLoadForCorrection(log: any) {
     setDepartment(log.department || "Publications & Testing");
     setTaskCategory(log.task_category || "Question Formation");
@@ -795,10 +799,50 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
+  // Filter 1: Delegated Tasks Search Filter
+  const filteredAssignments = useMemo(() => {
+    if (!searchDelegated.trim()) return assignments;
+    const q = searchDelegated.toLowerCase().trim();
+    return assignments.filter((a) => {
+      const emp = profilesList.find((p) => p.id === a.assigned_to);
+      const empName = formatUserDisplay(emp?.email).toLowerCase();
+      const empEmail = (emp?.email || "").toLowerCase();
+      const topic = (a.topic_name || "").toLowerCase();
+      const book = (a.subject_book || "").toLowerCase();
+      return empName.includes(q) || empEmail.includes(q) || topic.includes(q) || book.includes(q);
+    });
+  }, [assignments, searchDelegated, profilesList]);
+
+  // Filter 2: Queue Filter (Date + Searchbar)
   const filteredLogs = useMemo(() => {
-    if (!selectedDateFilter) return logs;
-    return logs.filter((log) => log.created_at && new Date(log.created_at).toLocaleDateString("en-CA") === selectedDateFilter);
-  }, [logs, selectedDateFilter]);
+    return logs.filter((log) => {
+      const matchDate = selectedDateFilter 
+        ? log.created_at && new Date(log.created_at).toLocaleDateString("en-CA") === selectedDateFilter 
+        : true;
+      
+      if (!matchDate) return false;
+      if (!searchQueue.trim()) return true;
+
+      const q = searchQueue.toLowerCase().trim();
+      const submitterEmail = (profileEmailMap.get(String(log.user_id)) || "").toLowerCase();
+      const submitterName = formatUserDisplay(submitterEmail).toLowerCase();
+      const topic = (log.topic_name || "").toLowerCase();
+      const book = (log.subject_book || "").toLowerCase();
+
+      return submitterName.includes(q) || submitterEmail.includes(q) || topic.includes(q) || book.includes(q);
+    });
+  }, [logs, selectedDateFilter, searchQueue, profileEmailMap]);
+
+  // Filter 3: Master Timesheet Search Filter
+  const filteredTimesheetData = useMemo(() => {
+    if (!searchTimesheet.trim()) return masterTimesheetData;
+    const q = searchTimesheet.toLowerCase().trim();
+    return masterTimesheetData.filter((row) => {
+      const empName = formatUserDisplay(row.email).toLowerCase();
+      const empEmail = row.email.toLowerCase();
+      return empName.includes(q) || empEmail.includes(q);
+    });
+  }, [masterTimesheetData, searchTimesheet]);
 
   const summaryMetrics = useMemo(() => {
     const totalCount = logs.length;
@@ -1198,7 +1242,6 @@ export default function PortalComponent() {
                           </span>
                         </td>
                         <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                          {/* Preview Done Work Button */}
                           <button
                             type="button"
                             onClick={() => setPreviewModalLog(l)}
@@ -1209,7 +1252,6 @@ export default function PortalComponent() {
                             Preview
                           </button>
 
-                          {/* Quick Edit/Correction Button */}
                           {l.status !== "approved" && (
                             <button
                               type="button"
@@ -1300,7 +1342,6 @@ export default function PortalComponent() {
                   </select>
                 </div>
 
-                {/* Conditional Task Category: Only visible for Publications & Testing */}
                 {assignDept === "Publications & Testing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
@@ -1319,7 +1360,6 @@ export default function PortalComponent() {
                   </div>
                 )}
 
-                {/* Conditional Proofing Stage: Only visible for Proofing */}
                 {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Proofing Stage *</label>
@@ -1384,44 +1424,63 @@ export default function PortalComponent() {
                 </div>
               </form>
 
-              {/* Manager Assigned Tasks Table with Delete & Clear Controls */}
+              {/* 1. Delegated Tasks Table with Searchbar & Fixed Height Scroll */}
               <div className="border-t border-slate-800 pt-4">
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3">
                   <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                    <Briefcase className="w-3.5 h-3.5 text-orange-500" /> Currently Delegated Tasks ({assignments.length})
+                    <Briefcase className="w-3.5 h-3.5 text-orange-500" /> Currently Delegated Tasks ({filteredAssignments.length})
                   </h4>
-                  {assignments.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleClearAllAssignments}
-                      className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer"
-                      title="Delete all delegated tasks"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Clear All Tasks
-                    </button>
-                  )}
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                      <input
+                        type="text"
+                        placeholder="Search employee or task..."
+                        value={searchDelegated}
+                        onChange={(e) => setSearchDelegated(e.target.value)}
+                        className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1 text-[11px] text-white focus:border-orange-500 outline-none w-48"
+                      />
+                      {searchDelegated && (
+                        <button onClick={() => setSearchDelegated("")} className="absolute right-2 top-1.5 text-slate-400 hover:text-white">
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+
+                    {assignments.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleClearAllAssignments}
+                        className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer shrink-0"
+                        title="Delete all delegated tasks"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        Clear All Tasks
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="overflow-x-auto max-h-56">
-                  <table className="w-full text-left text-[11px] text-slate-300">
-                    <thead className="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider sticky top-0 border-b border-slate-800">
+                <div className="overflow-y-auto max-h-64 border border-slate-800/80 rounded-lg">
+                  <table className="w-full text-left text-[11px] text-slate-300 border-collapse">
+                    <thead className="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
                       <tr>
-                        <th className="p-2">Employee</th>
-                        <th className="p-2">Topic / Book</th>
-                        <th className="p-2 text-center">Target Qty</th>
-                        <th className="p-2 text-center">Status</th>
-                        <th className="p-2 text-right">Action</th>
+                        <th className="p-2.5 bg-slate-950">Employee</th>
+                        <th className="p-2.5 bg-slate-950">Topic / Book</th>
+                        <th className="p-2.5 text-center bg-slate-950">Target Qty</th>
+                        <th className="p-2.5 text-center bg-slate-950">Status</th>
+                        <th className="p-2.5 text-right bg-slate-950">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {assignments.slice(0, 15).map((a) => {
+                      {filteredAssignments.map((a) => {
                         const employee = profilesList.find(p => p.id === a.assigned_to);
                         const empEmail = employee?.email || a.assigned_to;
 
                         return (
                           <tr key={a.id} className="hover:bg-slate-800/40">
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <span className="text-white font-medium block">
                                 {formatUserDisplay(empEmail)}
                               </span>
@@ -1429,19 +1488,19 @@ export default function PortalComponent() {
                                 {empEmail.slice(0, 18)}...
                               </span>
                             </td>
-                            <td className="p-2">
+                            <td className="p-2.5">
                               <span className="font-semibold text-white">{a.topic_name}</span>
                               <span className="text-slate-500 block text-[10px]">{a.subject_book}</span>
                             </td>
-                            <td className="p-2 text-center font-bold text-orange-400">{a.target_quantity}</td>
-                            <td className="p-2 text-center">
+                            <td className="p-2.5 text-center font-bold text-orange-400">{a.target_quantity}</td>
+                            <td className="p-2.5 text-center">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                                 a.status === "completed" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-300 border border-amber-800"
                               }`}>
                                 {a.status}
                               </span>
                             </td>
-                            <td className="p-2 text-right">
+                            <td className="p-2.5 text-right">
                               <button
                                 type="button"
                                 onClick={() => handleDeleteSingleAssignment(a.id)}
@@ -1454,9 +1513,9 @@ export default function PortalComponent() {
                           </tr>
                         );
                       })}
-                      {assignments.length === 0 && (
+                      {filteredAssignments.length === 0 && (
                         <tr>
-                          <td colSpan={5} className="p-3 text-center text-slate-500">No delegated tasks yet.</td>
+                          <td colSpan={5} className="p-4 text-center text-slate-500">No delegated tasks match your filter.</td>
                         </tr>
                       )}
                     </tbody>
@@ -1465,8 +1524,8 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Filter Bar with CSV Export & Reset Option */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            {/* 2. Verification Queue Filter Bar with Date + Employee Searchbar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-orange-500" />
@@ -1487,6 +1546,23 @@ export default function PortalComponent() {
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 )}
+
+                {/* Searchbar for Verification Queue */}
+                <div className="relative ml-2">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employee in queue..."
+                    value={searchQueue}
+                    onChange={(e) => setSearchQueue(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-56"
+                  />
+                  {searchQueue && (
+                    <button onClick={() => setSearchQueue("")} className="absolute right-2 top-2 text-slate-400 hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
@@ -1527,22 +1603,23 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Real-time Submissions Queue with Highlighted Submitter Name & Email */}
+            {/* Verification Queue with Fixed Height Scroll & Sticky Header */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue ({filteredLogs.length})
               </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              
+              <div className="overflow-y-auto max-h-80 border border-slate-800 rounded-lg">
+                <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
                     <tr>
-                      <th className="p-3">Date</th>
-                      <th className="p-3">Topic / Subject & Submitter</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3 text-center">Quantity</th>
-                      <th className="p-3">Proof</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Actions</th>
+                      <th className="p-3 bg-slate-950">Date</th>
+                      <th className="p-3 bg-slate-950">Topic / Subject & Submitter</th>
+                      <th className="p-3 bg-slate-950">Category</th>
+                      <th className="p-3 text-center bg-slate-950">Quantity</th>
+                      <th className="p-3 bg-slate-950">Proof</th>
+                      <th className="p-3 bg-slate-950">Status</th>
+                      <th className="p-3 text-right bg-slate-950">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -1557,7 +1634,6 @@ export default function PortalComponent() {
                           <td className="p-3">
                             <div className="font-semibold text-white text-sm">{l.topic_name}</div>
                             <div className="text-[11px] text-slate-400">{l.subject_book}</div>
-                            {/* Distinct Submitter Pill in Neon Cyan with Display Name */}
                             <div className="mt-1.5">
                               <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2.5 py-0.5 rounded shadow-sm">
                                 <User className="w-3 h-3 text-cyan-400" />
@@ -1587,7 +1663,7 @@ export default function PortalComponent() {
                               {l.status || "pending"}
                             </span>
                           </td>
-                          <td className="p-3 text-right space-x-2">
+                          <td className="p-3 text-right space-x-2 whitespace-nowrap">
                             {l.status !== "approved" && (
                               <button
                                 onClick={() => updateStatus(l.id, "approved")}
@@ -1610,7 +1686,7 @@ export default function PortalComponent() {
                     })}
                     {filteredLogs.length === 0 && (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-slate-500">No logs found for the selected period.</td>
+                        <td colSpan={7} className="p-6 text-center text-slate-500">No logs found matching your criteria.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1618,9 +1694,9 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Monthly Master Performance Timesheet Matrix with Clean Names */}
+            {/* 3. Monthly Master Performance Timesheet with Search & Fixed Scroll */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-4">
+              <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-800 pb-4">
                 <div>
                   <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
                     <TableProperties className="w-4 h-4 text-orange-500" />
@@ -1628,17 +1704,36 @@ export default function PortalComponent() {
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">Approved production units broken down by calendar days</p>
                 </div>
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  {/* Searchbar for Master Timesheet */}
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search employee matrix..."
+                      value={searchTimesheet}
+                      onChange={(e) => setSearchTimesheet(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-52"
+                    />
+                    {searchTimesheet && (
+                      <button onClick={() => setSearchTimesheet("")} className="absolute right-2 top-2 text-slate-400 hover:text-white">
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+
                   <input
                     type="month"
                     value={selectedMonthFilter}
                     onChange={(e) => setSelectedMonthFilter(e.target.value)}
                     className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none"
                   />
+                  
                   <button
                     type="button"
                     onClick={() => {
-                      const exportMatrixRows = masterTimesheetData.map((d) => {
+                      const exportMatrixRows = filteredTimesheetData.map((d) => {
                         const rowObj: any = {
                           Employee_Name: formatUserDisplay(d.email),
                           Employee_Email: d.email,
@@ -1662,23 +1757,23 @@ export default function PortalComponent() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[500px]">
+              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-slate-800 rounded-lg">
                 <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-800">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-30 border-b border-slate-800">
                     <tr>
-                      <th className="p-2.5 sticky left-0 bg-slate-950 z-20 min-w-[200px]">Employee</th>
-                      <th className="p-2.5 text-center min-w-[70px]">Total</th>
-                      <th className="p-2.5 text-center min-w-[60px]">Present</th>
-                      <th className="p-2.5 text-center min-w-[60px]">Daily Avg</th>
+                      <th className="p-2.5 sticky left-0 bg-slate-950 z-40 min-w-[200px]">Employee</th>
+                      <th className="p-2.5 text-center min-w-[70px] bg-slate-950">Total</th>
+                      <th className="p-2.5 text-center min-w-[60px] bg-slate-950">Present</th>
+                      <th className="p-2.5 text-center min-w-[60px] bg-slate-950">Daily Avg</th>
                       {monthDays.map((day) => (
-                        <th key={day} className="p-2 text-center min-w-[32px]">{day}</th>
+                        <th key={day} className="p-2 text-center min-w-[32px] bg-slate-950">{day}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {masterTimesheetData.map((row) => (
+                    {filteredTimesheetData.map((row) => (
                       <tr key={row.userId} className="hover:bg-slate-800/40">
-                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-10 border-r border-slate-800">
+                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-20 border-r border-slate-800">
                           <div className="font-semibold text-white">{formatUserDisplay(row.email)}</div>
                           <div className="text-[10px] text-slate-500 font-mono">{row.email}</div>
                         </td>
@@ -1695,9 +1790,9 @@ export default function PortalComponent() {
                         })}
                       </tr>
                     ))}
-                    {masterTimesheetData.length === 0 && (
+                    {filteredTimesheetData.length === 0 && (
                       <tr>
-                        <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">No timesheet data recorded for this month.</td>
+                        <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">No timesheet records match your search.</td>
                       </tr>
                     )}
                   </tbody>
@@ -1832,7 +1927,6 @@ export default function PortalComponent() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
               
-              {/* Modal Header */}
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-blue-600/20 text-blue-400 rounded-lg">
@@ -1852,9 +1946,7 @@ export default function PortalComponent() {
                 </button>
               </div>
 
-              {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-5 text-xs">
-                {/* Status & Date */}
                 <div className="flex justify-between items-center bg-slate-950 p-3 rounded-xl border border-slate-800">
                   <div>
                     <span className="text-slate-400 text-[10px] block uppercase font-mono">Submission Date</span>
@@ -1873,7 +1965,6 @@ export default function PortalComponent() {
                   </div>
                 </div>
 
-                {/* Task Details Card */}
                 <div className="grid grid-cols-2 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800/80">
                   <div>
                     <span className="text-slate-500 text-[10px] uppercase font-mono">Topic / Chapter</span>
@@ -1896,7 +1987,6 @@ export default function PortalComponent() {
                   </div>
                 </div>
 
-                {/* Manager Feedback / Remarks */}
                 <div className={`p-4 rounded-xl border ${
                   previewModalLog.status === "rejected"
                     ? "bg-rose-950/30 border-rose-800/70 text-rose-200"
@@ -1910,7 +2000,6 @@ export default function PortalComponent() {
                   </p>
                 </div>
 
-                {/* Proof Attachments Preview */}
                 <div>
                   <span className="text-slate-400 font-medium text-xs block mb-2">
                     Submitted Proof Attachments:
@@ -1940,7 +2029,6 @@ export default function PortalComponent() {
                 </div>
               </div>
 
-              {/* Modal Footer */}
               <div className="p-4 border-t border-slate-800 bg-slate-950/70 flex justify-between items-center gap-3">
                 {previewModalLog.status !== "approved" ? (
                   <button
