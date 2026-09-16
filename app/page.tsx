@@ -609,7 +609,7 @@ export default function PortalComponent() {
               }`}
             >
               <TableProperties className="w-4 h-4" />
-              Manager Master Dashboard 
+              Manager Master Dashboard
             </button>
           )}
         </div>
@@ -655,9 +655,11 @@ export default function PortalComponent() {
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
                     >
                       <option value="Question Formation">Question Formation</option>
+                      <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
                       <option value="Proofing">Proofing</option>
                       <option value="Solution Drafting">Solution Drafting</option>
                       <option value="Translation">Translation</option>
+                      <option value="Review / Fact Check">Review / Fact Check</option>
                     </select>
                   </div>
                 )}
@@ -845,7 +847,7 @@ export default function PortalComponent() {
             </div>
           </div>
         ) : (
-          /* ================= MANAGER MASTER DASHBOARD (ASHISH SIR) ================= */
+          /* ================= MANAGER MASTER DASHBOARD ================= */
           <div className="space-y-8">
             {/* Metric Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1013,7 +1015,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Monthly Master Performance Timesheet Matrix  */}
+            {/* Monthly Master Performance Timesheet Matrix */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-4">
                 <div>
