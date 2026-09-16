@@ -164,32 +164,68 @@ export default function PortalComponent() {
     fetchAssignments();
 
     const logsChannel = supabase
-      .channel("realtime-work-logs")
+      .channel("realtime-work-logs-listener")
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "work_logs" },
-        (payload: any) => {
+        { event: "INSERT", schema: "public", table: "work_logs" },
+        async (payload: any) => {
           fetchLogs();
 
-          if (payload.eventType === "INSERT") {
-            const newLog = payload.new;
-            const matchedProfile = profilesRef.current.find(
-              (p) => String(p.id) === String(newLog.user_id)
-            );
-            const empEmail = matchedProfile?.email || "An Employee";
+          const newLog = payload.new;
+          if (!newLog) return;
 
-            setManagerToast({
-              show: true,
-              employeeEmail: empEmail,
-              topic: newLog.topic_name || "Daily Task",
-              quantity: newLog.quantity || 0,
-            });
+          // Find email from current state ref or query directly
+          let empEmail = "Employee";
+          const matchedProfile = profilesRef.current.find(
+            (p) => String(p.id) === String(newLog.user_id)
+          );
 
-            setTimeout(() => {
-              setManagerToast(null);
-            }, 7000);
+          if (matchedProfile?.email) {
+            empEmail = matchedProfile.email;
+          } else {
+            const { data: pData } = await supabase
+              .from("profiles")
+              .select("email")
+              .eq("id", newLog.user_id)
+              .single();
+            if (pData?.email) empEmail = pData.email;
           }
+
+          // Trigger Toast on Manager's screen
+          setManagerToast({
+            show: true,
+            employeeEmail: empEmail,
+            topic: newLog.topic_name || "Daily Task",
+            quantity: newLog.quantity || 0,
+          });
+
+          // Soft audio alert
+          try {
+            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+          } catch (_) {}
+
+          setTimeout(() => {
+            setManagerToast(null);
+          }, 9000);
         }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "work_logs" },
+        () => fetchLogs()
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "work_logs" },
+        () => fetchLogs()
       )
       .subscribe();
 
@@ -214,7 +250,7 @@ export default function PortalComponent() {
       supabase.removeChannel(profilesChannel);
       supabase.removeChannel(assignmentsChannel);
     };
-  }, [currentUser]);
+  }, []);
 
   async function fetchLogs() {
     const { data } = await supabase
@@ -292,7 +328,6 @@ export default function PortalComponent() {
     }
   }
 
-  // Resolves user_id -> email cleanly
   const profileEmailMap = useMemo(() => {
     const map = new Map<string, string>();
     profilesList.forEach((p) => {
@@ -330,7 +365,7 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // 3. Employee View Flash Alert
+  // Employee Login Flash Alert
   useEffect(() => {
     if (userRole === "admin" || !currentUser) return;
 
@@ -570,7 +605,6 @@ export default function PortalComponent() {
     }
   }
 
-  // Fixed for BigInt primary key using numeric comparison
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
       "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
@@ -735,27 +769,33 @@ export default function PortalComponent() {
 
       {/* 2. Real-time Inbound Submission Flash Toast (Strictly for Manager) */}
       {userRole === "admin" && managerToast && managerToast.show && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
-          <div className="p-4 rounded-xl shadow-2xl border bg-slate-900/95 border-cyan-500/70 text-cyan-200 flex items-start gap-3 backdrop-blur-md">
-            <div className="p-2 bg-cyan-950 text-cyan-400 border border-cyan-800 rounded-lg shrink-0 mt-0.5">
-              <Sparkles className="w-4 h-4" />
+        <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="p-5 rounded-2xl shadow-2xl border bg-slate-900/95 border-amber-500/80 text-white flex items-start gap-4 backdrop-blur-xl ring-2 ring-amber-500/30">
+            <div className="p-3 bg-amber-950/80 text-amber-400 border border-amber-800/80 rounded-xl shrink-0 mt-0.5">
+              <BellRing className="w-6 h-6 animate-bounce" />
             </div>
-            <div className="flex-1 text-xs">
-              <p className="font-bold text-white mb-0.5 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
-                New Task Submitted!
-              </p>
+            <div className="flex-1 text-xs space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping inline-block" />
+                <p className="font-bold text-sm text-amber-300 uppercase tracking-wide">
+                  New Submission For Review!
+                </p>
+              </div>
               <p className="text-white font-semibold text-xs">
                 {formatUserDisplay(managerToast.employeeEmail)}
               </p>
-              <p className="text-cyan-300 font-mono text-[10px] break-all">{managerToast.employeeEmail}</p>
-              <p className="text-slate-300 mt-1 text-[11px]">
-                Topic: <span className="text-white font-medium">{managerToast.topic}</span> ({managerToast.quantity} Qty)
+              <p className="text-cyan-300 font-mono text-[11px] break-all">
+                {managerToast.employeeEmail}
               </p>
+              <div className="pt-1 text-slate-300 flex items-center gap-2">
+                <span>Topic: <b className="text-white">{managerToast.topic}</b></span>
+                <span>&bull;</span>
+                <span className="text-orange-400 font-bold">{managerToast.quantity} Qty</span>
+              </div>
             </div>
             <button
               onClick={() => setManagerToast(null)}
-              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded cursor-pointer"
+              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg cursor-pointer transition"
             >
               <X className="w-4 h-4" />
             </button>
