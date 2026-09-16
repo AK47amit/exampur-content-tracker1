@@ -30,7 +30,8 @@ import {
   X,
   Layers,
   BellRing,
-  AlertTriangle
+  AlertTriangle,
+  User
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -247,7 +248,20 @@ export default function PortalComponent() {
     }
   }
 
-  // Employee-Specific Submissions & Dynamic Remembering of Books
+  // Memoized User Profile Map to resolve user_id -> email cleanly
+  const profileEmailMap = useMemo(() => {
+    const map = new Map<string, string>();
+    profilesList.forEach((p) => {
+      if (p.id) {
+        map.set(String(p.id), p.email || p.full_name || "Employee");
+      }
+    });
+    if (currentUser) {
+      map.set(String(currentUser.id), currentUser.email);
+    }
+    return map;
+  }, [profilesList, currentUser]);
+
   const myPersonalLogs = useMemo(() => {
     return logs.filter((log) => currentUser && String(log.user_id) === String(currentUser.id));
   }, [logs, currentUser]);
@@ -272,7 +286,7 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // 3. Employee Login Reminder Flash Alert (Auto-disappears after 7 seconds)
+  // Employee Login Reminder Flash Alert (Auto-disappears after 7 seconds)
   useEffect(() => {
     if (userRole !== "employee" || !currentUser) return;
 
@@ -415,7 +429,7 @@ export default function PortalComponent() {
     }
   }
 
-  // 4. Manager Create Task Assignment (Cleaned - No Deadline Column)
+  // Manager Create Task Assignment
   async function handleAssignTask(e: React.FormEvent) {
     e.preventDefault();
     if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
@@ -1158,6 +1172,7 @@ export default function PortalComponent() {
                   onClick={() => {
                     const exportRows = filteredLogs.map((l) => ({
                       Date: l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : "",
+                      Employee_Email: profileEmailMap.get(String(l.user_id)) || "",
                       Department: l.department || "",
                       Task_Category: l.task_category || "",
                       Stage: l.stage || "",
@@ -1188,7 +1203,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Real-time Submissions Queue */}
+            {/* Real-time Submissions Queue with Highlighted Submitter Email */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue
@@ -1198,7 +1213,7 @@ export default function PortalComponent() {
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="p-3">Date</th>
-                      <th className="p-3">Topic / Subject</th>
+                      <th className="p-3">Topic / Subject & Employee</th>
                       <th className="p-3">Category</th>
                       <th className="p-3 text-center">Quantity</th>
                       <th className="p-3">Proof</th>
@@ -1207,56 +1222,67 @@ export default function PortalComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {filteredLogs.map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-800/40">
-                        <td className="p-3 text-slate-400 font-mono text-[11px]">
-                          {l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : ""}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-semibold text-white">{l.topic_name}</div>
-                          <div className="text-[10px] text-slate-500">{l.subject_book}</div>
-                        </td>
-                        <td className="p-3">
-                          <div>{l.task_category}</div>
-                          {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
-                        </td>
-                        <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
-                        <td className="p-3">
-                          {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
-                              Proof {i + 1} <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ))}
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
-                            l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
-                            "bg-amber-950 text-amber-400 border border-amber-800"
-                          }`}>
-                            {l.status || "pending"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-2">
-                          {l.status !== "approved" && (
-                            <button
-                              onClick={() => updateStatus(l.id, "approved")}
-                              className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
-                            >
-                              Approve
-                            </button>
-                          )}
-                          {l.status !== "rejected" && (
-                            <button
-                              onClick={() => updateStatus(l.id, "rejected")}
-                              className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
-                            >
-                              Reject
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredLogs.map((l) => {
+                      const submitterEmail = profileEmailMap.get(String(l.user_id)) || `Employee (${String(l.user_id).slice(0, 8)}...)`;
+
+                      return (
+                        <tr key={l.id} className="hover:bg-slate-800/40">
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                            {l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : ""}
+                          </td>
+                          <td className="p-3">
+                            <div className="font-semibold text-white text-sm">{l.topic_name}</div>
+                            <div className="text-[11px] text-slate-400">{l.subject_book}</div>
+                            {/* Distinct Submitter Email Pill */}
+                            <div className="mt-1.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2 py-0.5 rounded shadow-sm">
+                                <User className="w-3 h-3 text-cyan-400" />
+                                {submitterEmail}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div>{l.task_category}</div>
+                            {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
+                          </td>
+                          <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                          <td className="p-3">
+                            {parseAttachmentUrls(l.attachment_url).map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
+                                Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ))}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
+                              l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
+                              "bg-amber-950 text-amber-400 border border-amber-800"
+                            }`}>
+                              {l.status || "pending"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-2">
+                            {l.status !== "approved" && (
+                              <button
+                                onClick={() => updateStatus(l.id, "approved")}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                            )}
+                            {l.status !== "rejected" && (
+                              <button
+                                onClick={() => updateStatus(l.id, "rejected")}
+                                className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                              >
+                                Reject
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {filteredLogs.length === 0 && (
                       <tr>
                         <td colSpan={7} className="p-6 text-center text-slate-500">No logs found for the selected period.</td>
