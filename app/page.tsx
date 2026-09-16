@@ -161,7 +161,6 @@ export default function PortalComponent() {
         (payload: any) => {
           fetchLogs();
 
-          // If a new task log is submitted, trigger flash toast for manager
           if (payload.eventType === "INSERT") {
             const newLog = payload.new;
             const matchedProfile = profilesRef.current.find(
@@ -321,7 +320,7 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // 3. Employee View Flash Alert: Fires automatically for employees upon login
+  // 3. Employee View Flash Alert
   useEffect(() => {
     if (userRole === "admin" || !currentUser) return;
 
@@ -528,6 +527,7 @@ export default function PortalComponent() {
     }
   }
 
+  // Fixed for BigInt primary key using numeric comparison
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
       "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
@@ -543,7 +543,7 @@ export default function PortalComponent() {
     const { error } = await supabase
       .from("work_logs")
       .delete()
-      .neq("id", "00000000-0000-0000-0000-000000000000");
+      .gt("id", 0);
 
     if (error) alert("Error clearing logs: " + error.message);
     else {
@@ -750,7 +750,7 @@ export default function PortalComponent() {
           </div>
         </div>
 
-        {/* Dedicated Workspace Identity Badge (No confusing tab switcher) */}
+        {/* Dedicated Workspace Identity Badge */}
         <div className="flex items-center gap-2">
           {userRole === "admin" ? (
             <div className="inline-flex items-center gap-2 bg-slate-900 border border-purple-800/60 px-4 py-2 rounded-lg text-xs font-semibold text-purple-300">
@@ -767,7 +767,7 @@ export default function PortalComponent() {
 
         {/* ================= CONDITIONAL WORKSPACE ROUTING ================= */}
         {userRole !== "admin" ? (
-          /* ================= EMPLOYEE VIEW (Strictly for Employees) ================= */
+          /* ================= EMPLOYEE VIEW ================= */
           <div className="space-y-8 max-w-4xl mx-auto">
             
             {/* Employee Operational KPI Cards */}
@@ -1028,7 +1028,7 @@ export default function PortalComponent() {
             </div>
           </div>
         ) : (
-          /* ================= MANAGER MASTER DASHBOARD (Strictly for Admin) ================= */
+          /* ================= MANAGER MASTER DASHBOARD ================= */
           <div className="space-y-8">
             
             {/* Metric Summary Cards */}
