@@ -232,7 +232,7 @@ export default function PortalComponent() {
     }
   }
 
-  // 4. Strict Work Submission Handler with 3MB File Limit
+  // 4. Strict Work Submission Handler with 3MB Single & 10MB Batch Quota Checks
   async function handleWorkSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -273,13 +273,29 @@ export default function PortalComponent() {
       return;
     }
 
-    // 3MB File Size Limit Check
-    const maxSizeBytes = 3 * 1024 * 1024;
+    // Individual File Size Limit (Max 3MB per file)
+    const MAX_FILE_SIZE = 3 * 1024 * 1024;
     for (let i = 0; i < fileAttachments.length; i++) {
-      if (fileAttachments[i].size > maxSizeBytes) {
-        alert(`File "${fileAttachments[i].name}" exceeds 3MB limit! Please compress or select a smaller file.`);
+      if (fileAttachments[i].size > MAX_FILE_SIZE) {
+        alert(
+          `File "${fileAttachments[i].name}" (${(fileAttachments[i].size / (1024 * 1024)).toFixed(
+            2
+          )}MB) exceeds the 3MB limit! Please compress or choose a smaller file.`
+        );
         return;
       }
+    }
+
+    // Total Batch Size Limit (Max 10MB across all files)
+    const MAX_TOTAL_BATCH_SIZE = 10 * 1024 * 1024;
+    const totalBatchBytes = fileAttachments.reduce((sum, file) => sum + file.size, 0);
+    if (totalBatchBytes > MAX_TOTAL_BATCH_SIZE) {
+      alert(
+        `Total attachments size is ${(totalBatchBytes / (1024 * 1024)).toFixed(
+          2
+        )}MB, which exceeds the 10MB limit! Please attach fewer files.`
+      );
+      return;
     }
 
     setSubmitting(true);
@@ -445,12 +461,16 @@ export default function PortalComponent() {
       }
     });
 
-    const monthLogs = logs.filter(
-      (l) => l.created_at && l.created_at.startsWith(selectedMonthFilter)
-    );
-    const monthAtt = attendanceRecords.filter(
-      (a) => a.attendance_date && a.attendance_date.startsWith(selectedMonthFilter)
-    );
+    const monthLogs = logs.filter((l) => {
+      if (!l.created_at) return false;
+      const logLocalDate = new Date(l.created_at).toLocaleDateString("en-CA");
+      return logLocalDate.startsWith(selectedMonthFilter);
+    });
+
+    const monthAtt = attendanceRecords.filter((a) => {
+      if (!a.attendance_date) return false;
+      return a.attendance_date.startsWith(selectedMonthFilter);
+    });
 
     return Array.from(userMap.entries()).map(([userId, userInfo]) => {
       const dailyUnits: { [day: number]: number } = {};
@@ -488,12 +508,13 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays, currentUser]);
 
-  // Real-time Queue Date Filtering
+  // Real-time Queue Date Filtering (Local Timezone Normalized)
   const filteredLogs = useMemo(() => {
     if (!selectedDateFilter) return logs;
     return logs.filter((log) => {
-      const logDate = log.created_at ? log.created_at.slice(0, 10) : "";
-      return logDate === selectedDateFilter;
+      if (!log.created_at) return false;
+      const logLocalDate = new Date(log.created_at).toLocaleDateString("en-CA");
+      return logLocalDate === selectedDateFilter;
     });
   }, [logs, selectedDateFilter]);
 
@@ -704,7 +725,7 @@ export default function PortalComponent() {
 
                 <div className="md:col-span-2">
                   <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Attach Mandatory Proof (Max 3MB per file) <span className="text-rose-500">*</span>
+                    Attach Mandatory Proof (Max 3MB per file, Max 10MB total) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="file-upload-input"
@@ -713,13 +734,33 @@ export default function PortalComponent() {
                     accept="image/*,.pdf"
                     required
                     onChange={(e) => {
-                      if (e.target.files) {
-                        setFileAttachments(Array.from(e.target.files));
+                      if (!e.target.files) return;
+                      const selected = Array.from(e.target.files);
+
+                      const MAX_SINGLE = 3 * 1024 * 1024;
+                      const MAX_BATCH = 10 * 1024 * 1024;
+
+                      const oversizedFile = selected.find((f) => f.size > MAX_SINGLE);
+                      if (oversizedFile) {
+                        alert(`File "${oversizedFile.name}" exceeds the 3MB limit! Please compress or select another file.`);
+                        e.target.value = "";
+                        setFileAttachments([]);
+                        return;
                       }
+
+                      const totalBytes = selected.reduce((acc, f) => acc + f.size, 0);
+                      if (totalBytes > MAX_BATCH) {
+                        alert(`Total batch size exceeds 10MB! Please select fewer files.`);
+                        e.target.value = "";
+                        setFileAttachments([]);
+                        return;
+                      }
+
+                      setFileAttachments(selected);
                     }}
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">Accepts images (PNG, JPG) and PDF documents up to 3MB.</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Accepts images (PNG, JPG) and PDF documents up to 3MB each (Max 10MB total).</p>
                 </div>
 
                 <div className="md:col-span-2">
@@ -859,7 +900,7 @@ export default function PortalComponent() {
                   type="button"
                   onClick={() => {
                     const exportRows = filteredLogs.map((l) => ({
-                      Date: l.created_at ? l.created_at.slice(0, 10) : "",
+                      Date: l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : "",
                       Employee_Email: l.employee_email || "",
                       Department: l.department || "",
                       Task_Category: l.task_category || "",
@@ -903,7 +944,7 @@ export default function PortalComponent() {
                     {filteredLogs.map((l) => (
                       <tr key={l.id} className="hover:bg-slate-800/40">
                         <td className="p-3 text-slate-400 font-mono text-[11px]">
-                          {l.created_at ? l.created_at.slice(0, 10) : ""}
+                          {l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : ""}
                         </td>
                         <td className="p-3">
                           <div className="font-semibold text-white">{l.topic_name}</div>
