@@ -302,8 +302,9 @@ export default function PortalComponent() {
       .order("created_at", { ascending: false });
     if (data) {
       setProfilesList(data);
-      if (data.length > 0 && !assigneeId) {
-        setAssigneeId(data[0].id);
+      const activeProfiles = data.filter((p: any) => p.role !== "deactivated");
+      if (activeProfiles.length > 0 && !assigneeId) {
+        setAssigneeId(activeProfiles[0].id);
       }
     }
   }
@@ -353,7 +354,7 @@ export default function PortalComponent() {
     }
   }
 
-  // Employee Permanent Deletion Handler (Admin right with strict error check)
+  // Employee Soft Deletion Handler (Sets role to 'deactivated')
   async function handleDeleteEmployee(userId: string, email: string) {
     if (userId === currentUser?.id) {
       alert("You cannot delete your own active manager account!");
@@ -361,39 +362,31 @@ export default function PortalComponent() {
     }
 
     const confirmText = prompt(
-      `WARNING: You are about to permanently delete employee "${email}" and all associated records.\n\nType 'DELETE' in capital letters to confirm:`
+      `WARNING: You are about to deactivate employee "${email}" from the portal active directory.\n\nType 'DELETE' in capital letters to confirm:`
     );
     if (confirmText !== "DELETE") {
-      alert("Deletion cancelled. Verification text did not match.");
+      alert("Deactivation cancelled. Verification text did not match.");
       return;
     }
 
     try {
-      // 1. Delete associated child records explicitly
-      await supabase.from("work_logs").delete().eq("user_id", userId);
-      await supabase.from("task_assignments").delete().eq("assigned_to", userId);
-      await supabase.from("task_assignments").delete().eq("assigned_by", userId);
-      await supabase.from("attendance").delete().eq("user_id", userId);
-
-      // 2. Delete profile record and throw error if RLS blocks it
       const { error } = await supabase
         .from("profiles")
-        .delete()
+        .update({ role: "deactivated" })
         .eq("id", userId);
 
       if (error) {
         throw new Error(error.message);
       }
 
-      alert(`Employee "${email}" has been successfully deleted from the portal.`);
+      alert(`Employee "${email}" has been successfully deactivated and removed from active records.`);
       
-      // Refresh all lists instantly
       await fetchProfiles();
       await fetchLogs();
       await fetchAssignments();
       await fetchAttendance();
     } catch (err: any) {
-      alert("Failed to delete employee: " + (err.message || "Permission denied or database constraint error."));
+      alert("Failed to deactivate employee: " + (err.message || "Permission denied."));
     }
   }
 
@@ -410,7 +403,7 @@ export default function PortalComponent() {
   const profileEmailMap = useMemo(() => {
     const map = new Map<string, string>();
     profilesList.forEach((p) => {
-      if (p.id) {
+      if (p.id && p.role !== "deactivated") {
         map.set(String(p.id), p.email || p.full_name || "Employee");
       }
     });
@@ -804,7 +797,7 @@ export default function PortalComponent() {
   const masterTimesheetData = useMemo(() => {
     const userMap = new Map<string, { email: string; createdAt?: string }>();
     profilesList.forEach((p) => {
-      if (p.id && !p.id.startsWith("00000000")) {
+      if (p.id && !p.id.startsWith("00000000") && p.role !== "deactivated") {
         userMap.set(String(p.id), { email: p.email || p.full_name || "Employee", createdAt: p.created_at });
       }
     });
@@ -910,11 +903,12 @@ export default function PortalComponent() {
     });
   }, [masterTimesheetData, searchTimesheet]);
 
-  // Filter 4: Team Directory Search Filter
+  // Filter 4: Team Directory Search Filter (Excludes deactivated users)
   const filteredTeamProfiles = useMemo(() => {
-    if (!searchTeam.trim()) return profilesList;
+    const activeProfiles = profilesList.filter((p) => p.role !== "deactivated");
+    if (!searchTeam.trim()) return activeProfiles;
     const q = searchTeam.toLowerCase().trim();
-    return profilesList.filter((p) => {
+    return activeProfiles.filter((p) => {
       const email = (p.email || "").toLowerCase();
       const name = formatUserDisplay(email).toLowerCase();
       const role = (p.role || "employee").toLowerCase();
@@ -1388,7 +1382,7 @@ export default function PortalComponent() {
                 <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
                   <UserPlus className="w-4 h-4 text-orange-500" /> Delegate Task to Registered Employee
                 </h3>
-                <span className="text-xs text-slate-400">{profilesList.length} Registered Team Members</span>
+                <span className="text-xs text-slate-400">{profilesList.filter(p => p.role !== "deactivated").length} Active Team Members</span>
               </div>
 
               <form onSubmit={handleAssignTask} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
@@ -1400,7 +1394,7 @@ export default function PortalComponent() {
                     required
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
                   >
-                    {profilesList.map((p) => (
+                    {profilesList.filter(p => p.role !== "deactivated").map((p) => (
                       <option key={p.id} value={p.id}>
                         {formatUserDisplay(p.email)} ({p.email || p.id})
                       </option>
@@ -1671,7 +1665,7 @@ export default function PortalComponent() {
                             onClick={() => handleDeleteEmployee(p.id, p.email)}
                             disabled={p.id === currentUser?.id}
                             className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-600 disabled:opacity-30 text-rose-300 hover:text-white border border-rose-800/80 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
-                            title="Permanently Delete Employee Profile & Records"
+                            title="Deactivate and Remove Employee"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                             Delete Account
