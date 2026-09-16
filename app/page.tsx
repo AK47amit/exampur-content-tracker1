@@ -28,7 +28,9 @@ import {
   CheckSquare, 
   BookOpen,
   X,
-  Layers
+  Layers,
+  Eye,
+  RefreshCw
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -40,8 +42,10 @@ export default function PortalComponent() {
   const [activeTab, setActiveTab] = useState<"employee" | "manager">("employee");
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // Active Tasks Modal State
+  // Modals State
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
+  const [showApprovedModal, setShowApprovedModal] = useState(false);
+  const [previewingLog, setPreviewingLog] = useState<any>(null);
 
   // Work Logs, Attendance, Profiles & Assignments State
   const [logs, setLogs] = useState<any[]>([]);
@@ -51,7 +55,6 @@ export default function PortalComponent() {
 
   // Filter State (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
-  // Default to current Month: "YYYY-MM"
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -79,7 +82,7 @@ export default function PortalComponent() {
   const [assignDeadline, setAssignDeadline] = useState("");
   const [assigning, setAssigning] = useState(false);
 
-  // 1. Session Lifecycle, Role Verification & Domain Check
+  // 1. Session Lifecycle & Role Verification
   useEffect(() => {
     async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession();
@@ -240,30 +243,59 @@ export default function PortalComponent() {
     }
   }
 
-  // Employee-Specific Submissions & Dynamic Remembering of Books
+  // Employee-Specific Submissions
   const myPersonalLogs = useMemo(() => {
     return logs.filter((log) => currentUser && String(log.user_id) === String(currentUser.id));
   }, [logs, currentUser]);
+
+  const myApprovedLogs = useMemo(() => {
+    return myPersonalLogs.filter((l) => l.status === "approved");
+  }, [myPersonalLogs]);
 
   const myPendingLogs = useMemo(() => {
     return myPersonalLogs.filter((l) => l.status === "pending");
   }, [myPersonalLogs]);
 
-  // Unique remembered books for current employee
-  const myRememberedBooks = useMemo(() => {
-    const set = new Set<string>();
+  // Remembered books map with accumulated workdone
+  const rememberedBooksWithCount = useMemo(() => {
+    const countMap: { [book: string]: number } = {};
     myPersonalLogs.forEach((l) => {
-      if (l.subject_book && l.subject_book.trim()) set.add(l.subject_book.trim());
+      const bookKey = (l.subject_book || "").trim();
+      if (bookKey) {
+        const qty = Number(l.quantity) || 0;
+        countMap[bookKey] = (countMap[bookKey] || 0) + (l.status === "approved" ? qty : 0);
+      }
     });
-    return Array.from(set);
+    return Object.entries(countMap).map(([book, count]) => ({ book, count }));
   }, [myPersonalLogs]);
 
-  // Tasks assigned to currently logged-in employee
+  // Current selected book total workdone count
+  const currentSelectedBookDone = useMemo(() => {
+    if (!subjectBook.trim()) return 0;
+    const cleanBook = subjectBook.trim().toLowerCase();
+    return myPersonalLogs
+      .filter((l) => (l.subject_book || "").trim().toLowerCase() === cleanBook && l.status === "approved")
+      .reduce((sum, l) => sum + (Number(l.quantity) || 0), 0);
+  }, [subjectBook, myPersonalLogs]);
+
+  // Tasks assigned to employee
   const myAssignedTasks = useMemo(() => {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // Quick autofill when employee clicks "Work on Task"
+  // Re-fill form from a previous log for preview or resubmission
+  function loadLogIntoForm(log: any) {
+    setDepartment(log.department || "Publications & Testing");
+    setTaskCategory(log.task_category || "Question Formation");
+    setStage(log.stage || "Proof 1");
+    setSubjectBook(log.subject_book || "");
+    setTopicName(log.topic_name ? `${log.topic_name} (Updated)` : "");
+    setQuantity(String(log.quantity || ""));
+    setShowApprovedModal(false);
+    setPreviewingLog(null);
+    window.scrollTo({ top: 350, behavior: "smooth" });
+  }
+
   function selectTaskToWork(task: any) {
     setDepartment(task.department || "Publications & Testing");
     setTaskCategory(task.task_category || "Question Formation");
@@ -276,7 +308,7 @@ export default function PortalComponent() {
     window.scrollTo({ top: 350, behavior: "smooth" });
   }
 
-  // 4. Strict Work Submission Handler
+  // Work Submission Handler
   async function handleWorkSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -355,7 +387,6 @@ export default function PortalComponent() {
       },
     ]);
 
-    // If submitted via assigned task, mark assigned task as completed
     if (!error && completingTaskId) {
       await supabase
         .from("task_assignments")
@@ -381,7 +412,7 @@ export default function PortalComponent() {
     }
   }
 
-  // 5. Manager Create Task Assignment
+  // Manager Create Task Assignment with verified Deadline
   async function handleAssignTask(e: React.FormEvent) {
     e.preventDefault();
     if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
@@ -390,6 +421,8 @@ export default function PortalComponent() {
     }
 
     setAssigning(true);
+    const formattedDeadline = assignDeadline && assignDeadline.trim() !== "" ? assignDeadline : null;
+
     const { error } = await supabase.from("task_assignments").insert([
       {
         assigned_to: assigneeId,
@@ -400,7 +433,7 @@ export default function PortalComponent() {
         subject_book: assignSubject.trim(),
         topic_name: assignTopic.trim(),
         target_quantity: parseInt(assignQty),
-        deadline: assignDeadline || null,
+        deadline: formattedDeadline,
         status: "assigned"
       }
     ]);
@@ -409,7 +442,7 @@ export default function PortalComponent() {
     if (error) {
       alert("Failed to assign task: " + error.message);
     } else {
-      alert("Task assigned successfully to the employee!");
+      alert(`Task successfully assigned with deadline: ${formattedDeadline || "No Deadline"}`);
       setAssignSubject("");
       setAssignTopic("");
       setAssignQty("");
@@ -440,13 +473,13 @@ export default function PortalComponent() {
 
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
-      "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
+      "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records."
     );
     if (!isFirstConfirmed) return;
 
     const userInput = prompt("Type 'RESET' in capital letters to confirm permanent deletion of all work logs:");
     if (userInput !== "RESET") {
-      alert("Reset cancelled. Verification text did not match.");
+      alert("Reset cancelled.");
       return;
     }
 
@@ -637,7 +670,8 @@ export default function PortalComponent() {
             
             {/* Employee Operational KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {/* CLICKABLE ACTIVE TASKS CARD */}
+              
+              {/* Card 1: Clickable Active Tasks */}
               <button
                 type="button"
                 onClick={() => setShowActiveTasksModal(true)}
@@ -645,30 +679,40 @@ export default function PortalComponent() {
               >
                 <div className="flex justify-between items-start">
                   <p className="text-xs text-orange-400 font-semibold group-hover:text-orange-300 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5" /> My Active Tasks (Pending/Assigned)
+                    <Layers className="w-3.5 h-3.5" /> My Active Tasks
                   </p>
-                  <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">View List &rarr;</span>
+                  <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">Open &rarr;</span>
                 </div>
                 <p className="text-2xl font-bold text-orange-400 mt-2">
                   {myAssignedTasks.length + myPendingLogs.length}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Under Review
+                  {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Pending
                 </p>
               </button>
 
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
+              {/* Card 2: Clickable Approved Tasks Preview */}
+              <button
+                type="button"
+                onClick={() => setShowApprovedModal(true)}
+                className="bg-slate-900 hover:bg-slate-800/80 border border-emerald-500/40 hover:border-emerald-500 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-lg group relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start">
+                  <p className="text-xs text-emerald-400 font-semibold group-hover:text-emerald-300 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> Approved Submissions
+                  </p>
+                  <span className="text-[10px] bg-emerald-600/20 text-emerald-300 px-1.5 py-0.5 rounded border border-emerald-700/40">Preview &rarr;</span>
+                </div>
                 <p className="text-2xl font-bold text-emerald-400 mt-2">
-                  {myPersonalLogs.filter(l => l.status === "approved").length}
+                  {myApprovedLogs.length}
                 </p>
-                <p className="text-[11px] text-slate-400 mt-1">Verified output records</p>
-              </div>
+                <p className="text-[11px] text-slate-400 mt-1">Click to preview or re-submit</p>
+              </button>
 
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
                 <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
                 <p className="text-2xl font-bold text-blue-400 mt-2">
-                  {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
+                  {myApprovedLogs.reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
                 </p>
                 <p className="text-[11px] text-slate-400 mt-1">Cumulative verified count</p>
               </div>
@@ -734,16 +778,22 @@ export default function PortalComponent() {
                   </div>
                 )}
 
-                {/* Smart Subject / Book Name with Dropdown memory + Custom Input */}
+                {/* Smart Subject / Book Name with Dropdown memory + Real-time Work Done Count */}
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <label className="text-xs text-slate-300 font-medium">
                       Subject / Book Name <span className="text-rose-500">*</span>
                     </label>
-                    {myRememberedBooks.length > 0 && (
-                      <span className="text-[10px] text-orange-400 font-mono">
-                        {myRememberedBooks.length} Saved Books
+                    {currentSelectedBookDone > 0 ? (
+                      <span className="text-[11px] text-emerald-400 font-bold font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800">
+                        {currentSelectedBookDone} Units Done
                       </span>
+                    ) : (
+                      rememberedBooksWithCount.length > 0 && (
+                        <span className="text-[10px] text-orange-400 font-mono">
+                          {rememberedBooksWithCount.length} Saved Books
+                        </span>
+                      )
                     )}
                   </div>
                   <input
@@ -756,8 +806,10 @@ export default function PortalComponent() {
                     className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
                   />
                   <datalist id="remembered-books">
-                    {myRememberedBooks.map((book, idx) => (
-                      <option key={idx} value={book} />
+                    {rememberedBooksWithCount.map(({ book, count }, idx) => (
+                      <option key={idx} value={book}>
+                        {book} (Total Done: {count} units)
+                      </option>
                     ))}
                   </datalist>
                 </div>
@@ -838,7 +890,7 @@ export default function PortalComponent() {
               </form>
             </div>
 
-            {/* Employee's Own Logs */}
+            {/* Employee's Own Logs with Preview / Re-Submit Action */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
                 <History className="w-4 h-4 text-orange-500" /> My Recent Submissions
@@ -852,6 +904,7 @@ export default function PortalComponent() {
                       <th className="p-3 text-center">Qty</th>
                       <th className="p-3">Proof</th>
                       <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
@@ -882,11 +935,21 @@ export default function PortalComponent() {
                             {l.status || "pending"}
                           </span>
                         </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => loadLogIntoForm(l)}
+                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded border border-slate-700 text-[11px] transition inline-flex items-center gap-1 cursor-pointer"
+                            title="Load back into form for review or correction"
+                          >
+                            <RefreshCw className="w-3 h-3" /> Re-use
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {myPersonalLogs.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
+                        <td colSpan={6} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
                       </tr>
                     )}
                   </tbody>
@@ -922,7 +985,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Manager Task Delegation Window */}
+            {/* Manager Task Delegation Window with Verified Deadline */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
               <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
                 <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
@@ -1262,8 +1325,6 @@ export default function PortalComponent() {
         {showActiveTasksModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-              
-              {/* Modal Header */}
               <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-orange-600/20 text-orange-500 rounded-lg">
@@ -1283,17 +1344,12 @@ export default function PortalComponent() {
                 </button>
               </div>
 
-              {/* Modal Body */}
               <div className="p-6 overflow-y-auto space-y-6">
-                
-                {/* Section 1: Assigned by Manager */}
+                {/* Delegated By Manager */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
-                      <Briefcase className="w-4 h-4" /> Delegated By Manager ({myAssignedTasks.length})
-                    </h4>
-                    <span className="text-[10px] text-slate-500">Awaiting your completion</span>
-                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" /> Delegated By Manager ({myAssignedTasks.length})
+                  </h4>
 
                   {myAssignedTasks.length > 0 ? (
                     <div className="space-y-2.5">
@@ -1326,19 +1382,16 @@ export default function PortalComponent() {
                     </div>
                   ) : (
                     <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs text-slate-500">
-                      No delegated tasks assigned by manager right now.
+                      No delegated tasks assigned right now.
                     </div>
                   )}
                 </div>
 
-                {/* Section 2: Under Review Submissions */}
+                {/* Pending Verification */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                      <Clock className="w-4 h-4" /> Pending Manager Review ({myPendingLogs.length})
-                    </h4>
-                    <span className="text-[10px] text-slate-500">Submitted & awaiting verification</span>
-                  </div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <Clock className="w-4 h-4" /> Pending Manager Review ({myPendingLogs.length})
+                  </h4>
 
                   {myPendingLogs.length > 0 ? (
                     <div className="space-y-2">
@@ -1366,10 +1419,8 @@ export default function PortalComponent() {
                     </div>
                   )}
                 </div>
-
               </div>
 
-              {/* Modal Footer */}
               <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
                 <button
                   type="button"
@@ -1379,7 +1430,85 @@ export default function PortalComponent() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        )}
 
+        {/* ================= APPROVED TASKS PREVIEW MODAL ================= */}
+        {showApprovedModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-emerald-600/20 text-emerald-400 rounded-lg">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Approved Submissions Archive</h3>
+                    <p className="text-xs text-slate-400">Review verified work, inspect proofs, or re-submit updates</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowApprovedModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-3">
+                {myApprovedLogs.length > 0 ? (
+                  myApprovedLogs.map((log) => (
+                    <div key={log.id} className="bg-slate-950 border border-slate-800 hover:border-slate-700 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold text-white">{log.topic_name}</span>
+                          <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
+                            Approved ({log.quantity} Units)
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400">
+                          {log.subject_book} &bull; {log.task_category} {log.stage ? `(${log.stage})` : ""}
+                        </p>
+                        <div className="flex items-center gap-3 text-[11px] text-slate-500 pt-1">
+                          <span>Date: {new Date(log.created_at).toLocaleDateString("en-CA")}</span>
+                          {parseAttachmentUrls(log.attachment_url).map((url, i) => (
+                            <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1">
+                              Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                            </a>
+                          ))}
+                        </div>
+                        {log.manager_remarks && (
+                          <p className="text-[11px] text-slate-400 italic">Remarks: {log.manager_remarks}</p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => loadLogIntoForm(log)}
+                        className="px-3.5 py-1.5 bg-orange-600/30 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-700/60 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1.5 shrink-0"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Re-Submit / Edit
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-xs text-slate-500">
+                    No approved work logs recorded yet.
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowApprovedModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
