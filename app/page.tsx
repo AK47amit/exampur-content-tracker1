@@ -35,8 +35,7 @@ import {
   Eye,
   Edit3,
   Search,
-  KeyRound,
-  Mail
+  Users
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -56,11 +55,6 @@ export default function PortalComponent() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<"employee" | "admin" | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
-
-  // Forgot Password Modal State
-  const [showForgotModal, setShowForgotModal] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [sendingReset, setSendingReset] = useState(false);
 
   // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
@@ -90,6 +84,7 @@ export default function PortalComponent() {
   const [searchDelegated, setSearchDelegated] = useState("");
   const [searchQueue, setSearchQueue] = useState("");
   const [searchTimesheet, setSearchTimesheet] = useState("");
+  const [searchTeam, setSearchTeam] = useState("");
 
   // Date Filters (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
@@ -358,26 +353,39 @@ export default function PortalComponent() {
     }
   }
 
-  // Handle Forgot Password Request
-  async function handlePasswordResetRequest(e: React.FormEvent) {
-    e.preventDefault();
-    if (!forgotEmail.trim()) {
-      alert("Please enter your registered email address.");
+  // Employee Permanent Deletion Handler (Admin right)
+  async function handleDeleteEmployee(userId: string, email: string) {
+    if (userId === currentUser?.id) {
+      alert("You cannot delete your own active manager account!");
       return;
     }
 
-    setSendingReset(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/login`,
-    });
+    const confirmText = prompt(
+      `WARNING: You are about to permanently delete employee "${email}" and all associated work logs, attendance, and task assignments.\n\nType 'DELETE' in capital letters to confirm:`
+    );
+    if (confirmText !== "DELETE") {
+      alert("Deletion cancelled. Verification text did not match.");
+      return;
+    }
 
-    setSendingReset(false);
-    if (error) {
-      alert("Error sending password reset email: " + error.message);
-    } else {
-      alert("Password reset instructions have been sent to your email address!");
-      setShowForgotModal(false);
-      setForgotEmail("");
+    try {
+      // 1. Delete associated child records to prevent foreign key constraint violations
+      await supabase.from("work_logs").delete().eq("user_id", userId);
+      await supabase.from("task_assignments").delete().eq("assigned_to", userId);
+      await supabase.from("task_assignments").delete().eq("assigned_by", userId);
+      await supabase.from("attendance").delete().eq("user_id", userId);
+
+      // 2. Delete profile record
+      const { error } = await supabase.from("profiles").delete().eq("id", userId);
+      if (error) throw error;
+
+      alert(`Employee "${email}" has been successfully deleted from the portal.`);
+      fetchProfiles();
+      fetchLogs();
+      fetchAssignments();
+      fetchAttendance();
+    } catch (err: any) {
+      alert("Failed to delete employee: " + (err.message || err));
     }
   }
 
@@ -828,7 +836,7 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // 100% BULLETPROOF Filter 1: Currently Delegated Tasks Search
+  // Filter 1: Currently Delegated Tasks Search
   const filteredAssignments = useMemo(() => {
     if (!searchDelegated.trim()) return assignments;
     const q = searchDelegated.toLowerCase().trim();
@@ -854,7 +862,7 @@ export default function PortalComponent() {
     });
   }, [assignments, searchDelegated, profileEmailMap]);
 
-  // 100% BULLETPROOF Filter 2: Queue Filter
+  // Filter 2: Queue Filter
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchDate = selectedDateFilter 
@@ -893,6 +901,18 @@ export default function PortalComponent() {
       return empName.includes(q) || empEmail.includes(q);
     });
   }, [masterTimesheetData, searchTimesheet]);
+
+  // Filter 4: Team Directory Search Filter
+  const filteredTeamProfiles = useMemo(() => {
+    if (!searchTeam.trim()) return profilesList;
+    const q = searchTeam.toLowerCase().trim();
+    return profilesList.filter((p) => {
+      const email = (p.email || "").toLowerCase();
+      const name = formatUserDisplay(email).toLowerCase();
+      const role = (p.role || "employee").toLowerCase();
+      return email.includes(q) || name.includes(q) || role.includes(q);
+    });
+  }, [profilesList, searchTeam]);
 
   const summaryMetrics = useMemo(() => {
     const totalCount = logs.length;
@@ -1010,26 +1030,14 @@ export default function PortalComponent() {
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowForgotModal(true)}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center gap-1.5 cursor-pointer"
-                title="Reset or Forgot Password"
-              >
-                <KeyRound className="w-3.5 h-3.5 text-orange-400" />
-                Reset Password
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Logout
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Logout
+            </button>
           </div>
         </div>
 
@@ -1590,6 +1598,89 @@ export default function PortalComponent() {
               </div>
             </div>
 
+            {/* TEAM DIRECTORY & EMPLOYEE MANAGEMENT WINDOW */}
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
+                  <Users className="w-4 h-4 text-orange-500" /> Team Directory & Employee Management ({filteredTeamProfiles.length})
+                </h3>
+
+                {/* Team Searchbar */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employee directory..."
+                    value={searchTeam}
+                    onChange={(e) => setSearchTeam(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-xs text-white focus:border-orange-500 outline-none w-56"
+                  />
+                  {searchTeam && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchTeam("")} 
+                      className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-y-auto max-h-72 border border-slate-800 rounded-lg">
+                <table className="w-full text-left text-xs text-slate-300 border-collapse">
+                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
+                    <tr>
+                      <th className="p-3 bg-slate-950">Employee Name</th>
+                      <th className="p-3 bg-slate-950">Workspace Email</th>
+                      <th className="p-3 bg-slate-950">Role</th>
+                      <th className="p-3 bg-slate-950">Joined Date</th>
+                      <th className="p-3 text-right bg-slate-950">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {filteredTeamProfiles.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-800/40">
+                        <td className="p-3 font-semibold text-white">
+                          {formatUserDisplay(p.email)}
+                        </td>
+                        <td className="p-3 text-cyan-300 font-mono text-[11px]">
+                          {p.email || "N/A"}
+                        </td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            p.role === "admin" ? "bg-purple-950 text-purple-300 border border-purple-800" : "bg-blue-950 text-blue-300 border border-blue-800"
+                          }`}>
+                            {p.role || "employee"}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-400 font-mono text-[11px]">
+                          {p.created_at ? p.created_at.slice(0, 10) : "N/A"}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEmployee(p.id, p.email)}
+                            disabled={p.id === currentUser?.id}
+                            className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-600 disabled:opacity-30 text-rose-300 hover:text-white border border-rose-800/80 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                            title="Permanently Delete Employee Profile & Records"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete Account
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredTeamProfiles.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500">No employees found matching your search.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* Daily Queue Filter Bar (Clean - No Searchbar) */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
@@ -1874,67 +1965,6 @@ export default function PortalComponent() {
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* ================= FORGOT PASSWORD MODAL ================= */}
-        {showForgotModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md flex flex-col shadow-2xl overflow-hidden">
-              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/70">
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-orange-600/20 text-orange-400 rounded-lg">
-                    <KeyRound className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-white">Reset Password</h3>
-                    <p className="text-[11px] text-slate-400">Receive password reset instructions via email</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowForgotModal(false)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handlePasswordResetRequest} className="p-6 space-y-4 text-xs">
-                <div>
-                  <label className="text-slate-300 block mb-2 font-medium">Your Registered Workspace Email *</label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. amit.biswas@exampur.com"
-                      value={forgotEmail}
-                      onChange={(e) => setForgotEmail(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg pl-9 pr-3 py-2.5 text-white outline-none focus:border-orange-500 text-xs"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotModal(false)}
-                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg font-medium transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={sendingReset}
-                    className="px-5 py-2 bg-orange-600 hover:bg-orange-500 text-white font-semibold rounded-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    {sendingReset ? "Sending Link..." : "Send Reset Link"}
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}
