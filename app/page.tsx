@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { 
@@ -43,13 +43,21 @@ export default function PortalComponent() {
   const [activeTab, setActiveTab] = useState<"employee" | "manager">("employee");
   const [loadingUser, setLoadingUser] = useState(true);
 
-  // Active Tasks Modal & Flash Alert State
+  // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
   const [flashAlert, setFlashAlert] = useState<{
     show: boolean;
     type: "rejected" | "pending_assigned" | "clean";
     title: string;
     message: string;
+  } | null>(null);
+
+  // Real-time Manager Inbound Submission Toast State
+  const [managerToast, setManagerToast] = useState<{
+    show: boolean;
+    employeeEmail: string;
+    topic: string;
+    quantity: number;
   } | null>(null);
 
   // Work Logs, Attendance, Profiles & Assignments State
@@ -86,6 +94,10 @@ export default function PortalComponent() {
   const [assignTopic, setAssignTopic] = useState("");
   const [assignQty, setAssignQty] = useState("");
   const [assigning, setAssigning] = useState(false);
+
+  // Profile Map Ref for Realtime Callback Sync
+  const profilesRef = useRef<any[]>([]);
+  profilesRef.current = profilesList;
 
   // 1. Session Lifecycle, Role Verification & Domain Check
   useEffect(() => {
@@ -137,7 +149,7 @@ export default function PortalComponent() {
     };
   }, []);
 
-  // 2. Realtime Listeners
+  // 2. Realtime Listeners with Manager Toast on New Log Submissions
   useEffect(() => {
     fetchLogs();
     fetchAttendance();
@@ -146,7 +158,33 @@ export default function PortalComponent() {
 
     const logsChannel = supabase
       .channel("realtime-work-logs")
-      .on("postgres_changes", { event: "*", schema: "public", table: "work_logs" }, () => fetchLogs())
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "work_logs" },
+        (payload: any) => {
+          fetchLogs();
+
+          // If a new task log is submitted, trigger flash toast for manager
+          if (payload.eventType === "INSERT") {
+            const newLog = payload.new;
+            const matchedProfile = profilesRef.current.find(
+              (p) => String(p.id) === String(newLog.user_id)
+            );
+            const empEmail = matchedProfile?.email || "An Employee";
+
+            setManagerToast({
+              show: true,
+              employeeEmail: empEmail,
+              topic: newLog.topic_name || "Daily Task",
+              quantity: newLog.quantity || 0,
+            });
+
+            setTimeout(() => {
+              setManagerToast(null);
+            }, 7000);
+          }
+        }
+      )
       .subscribe();
 
     const attendanceChannel = supabase
@@ -248,7 +286,7 @@ export default function PortalComponent() {
     }
   }
 
-  // Memoized User Profile Map to resolve user_id -> email cleanly
+  // Resolves user_id -> email cleanly
   const profileEmailMap = useMemo(() => {
     const map = new Map<string, string>();
     profilesList.forEach((p) => {
@@ -286,9 +324,9 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // Employee Login Reminder Flash Alert (Auto-disappears after 7 seconds)
+  // 3. Employee View Flash Alert: Fires whenever Employee View is entered
   useEffect(() => {
-    if (userRole !== "employee" || !currentUser) return;
+    if (activeTab !== "employee" || !currentUser) return;
 
     if (myRejectedLogs.length > 0) {
       const recentRejected = myRejectedLogs[0];
@@ -296,7 +334,9 @@ export default function PortalComponent() {
         show: true,
         type: "rejected",
         title: `Attention: ${myRejectedLogs.length} Submission(s) Rejected!`,
-        message: `"${recentRejected.topic_name}" was rejected. Reason: ${recentRejected.manager_remarks || "Please re-check and submit proof again."}`,
+        message: `"${recentRejected.topic_name}" needs correction. Reason: ${
+          recentRejected.manager_remarks || "Please re-check and submit proof again."
+        }`,
       });
     } else if (myAssignedTasks.length > 0) {
       setFlashAlert({
@@ -305,14 +345,21 @@ export default function PortalComponent() {
         title: `Reminder: ${myAssignedTasks.length} Assigned Task(s) Pending!`,
         message: `You have operational tasks assigned by manager awaiting completion today.`,
       });
+    } else if (myPendingLogs.length > 0) {
+      setFlashAlert({
+        show: true,
+        type: "pending_assigned",
+        title: `Notice: ${myPendingLogs.length} Task(s) Under Review`,
+        message: `Your submitted work logs are currently in the queue for manager verification.`,
+      });
     }
 
     const timer = setTimeout(() => {
       setFlashAlert(null);
-    }, 7000);
+    }, 6000);
 
     return () => clearTimeout(timer);
-  }, [userRole, currentUser, myRejectedLogs.length, myAssignedTasks.length]);
+  }, [activeTab, currentUser, myRejectedLogs.length, myAssignedTasks.length, myPendingLogs.length]);
 
   function selectTaskToWork(task: any) {
     setDepartment(task.department || "Publications & Testing");
@@ -429,7 +476,7 @@ export default function PortalComponent() {
     }
   }
 
-  // Manager Create Task Assignment
+  // 4. Manager Create Task Assignment
   async function handleAssignTask(e: React.FormEvent) {
     e.preventDefault();
     if (!assigneeId || !assignSubject.trim() || !assignTopic.trim() || !assignQty) {
@@ -619,7 +666,7 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-      {/* Smart Login Reminder Flash Toast Notification */}
+      {/* 1. Smart Login / Tab Switch Reminder Flash Toast (Employee) */}
       {flashAlert && flashAlert.show && (
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
           <div className={`p-4 rounded-xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
@@ -639,6 +686,33 @@ export default function PortalComponent() {
             <button
               onClick={() => setFlashAlert(null)}
               className="text-slate-400 hover:text-white p-1 hover:bg-slate-800/50 rounded cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Real-time Inbound Submission Flash Toast (Manager) */}
+      {userRole === "admin" && managerToast && managerToast.show && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="p-4 rounded-xl shadow-2xl border bg-slate-900/95 border-cyan-500/70 text-cyan-200 flex items-start gap-3 backdrop-blur-md">
+            <div className="p-2 bg-cyan-950 text-cyan-400 border border-cyan-800 rounded-lg shrink-0 mt-0.5">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="flex-1 text-xs">
+              <p className="font-bold text-white mb-0.5 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping inline-block" />
+                New Task Submitted!
+              </p>
+              <p className="text-cyan-300 font-mono text-[11px] break-all">{managerToast.employeeEmail}</p>
+              <p className="text-slate-300 mt-1">
+                Topic: <span className="text-white font-medium">{managerToast.topic}</span> ({managerToast.quantity} Qty)
+              </p>
+            </div>
+            <button
+              onClick={() => setManagerToast(null)}
+              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1213,7 +1287,7 @@ export default function PortalComponent() {
                   <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
                     <tr>
                       <th className="p-3">Date</th>
-                      <th className="p-3">Topic / Subject & Employee</th>
+                      <th className="p-3">Topic / Subject & Submitter</th>
                       <th className="p-3">Category</th>
                       <th className="p-3 text-center">Quantity</th>
                       <th className="p-3">Proof</th>
@@ -1233,7 +1307,7 @@ export default function PortalComponent() {
                           <td className="p-3">
                             <div className="font-semibold text-white text-sm">{l.topic_name}</div>
                             <div className="text-[11px] text-slate-400">{l.subject_book}</div>
-                            {/* Distinct Submitter Email Pill */}
+                            {/* Distinct Submitter Email Pill in Neon Cyan */}
                             <div className="mt-1.5">
                               <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2 py-0.5 rounded shadow-sm">
                                 <User className="w-3 h-3 text-cyan-400" />
