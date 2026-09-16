@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Sparkles } from 'lucide-react';
 
 export default function LoginPage() {
-  const router = useRouter();
   const [role, setRole] = useState<'employee' | 'manager'>('employee');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -15,20 +13,34 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 1. Google OAuth with Workspace Domain Hint
   const handleGoogleLogin = async () => {
     try {
+      setErrorMsg('');
+      const authOptions: any = {
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          prompt: 'select_account',
+        },
+      };
+
+      // Agar Manager tab selected hai toh Google OAuth ko Exampur workspace domain pe hint/restrict karo
+      if (role === 'manager') {
+        authOptions.queryParams.hd = 'exampur.com';
+      }
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/`,
-        },
+        options: authOptions,
       });
+
       if (error) throw error;
     } catch (err: any) {
       setErrorMsg(err.message || 'Google login failed');
     }
   };
 
+  // 2. Email & Password Auth Handler
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -37,21 +49,30 @@ export default function LoginPage() {
     try {
       if (isSignUp) {
         const { data, error } = await supabase.auth.signUp({
-          email,
+          email: email.trim().toLowerCase(),
           password,
         });
+
         if (error) throw error;
 
-        alert('Account created! Please sign in.');
-        setIsSignUp(false);
+        // Agar Supabase me email confirmation off hai toh session turant ban jata hai
+        if (data?.session) {
+          window.location.href = '/';
+        } else {
+          alert('Account created! Please sign in with your credentials.');
+          setIsSignUp(false);
+          setPassword('');
+        }
       } else {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
           password,
         });
+
         if (error) throw error;
 
-        router.push('/');
+        // Hard redirect taaki auth session aur profiles RLS instantly initialize ho jaye
+        window.location.href = '/';
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Authentication error occurred');
@@ -65,7 +86,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-[#161b22] border border-gray-800 rounded-2xl p-6 md:p-8 shadow-2xl">
         {/* Top Brand Header */}
         <div className="flex items-center gap-2 mb-6">
-          <span className="bg-[#ff5722] text-white text-xs font-black px-2.5 py-1 rounded">
+          <span className="bg-[#ff5722] text-white text-xs font-black px-2.5 py-1 rounded tracking-wider">
             EXAMPUR
           </span>
           <h1 className="text-xl font-bold text-white tracking-wide">
@@ -81,7 +102,7 @@ export default function LoginPage() {
               setRole('employee');
               setErrorMsg('');
             }}
-            className={`py-2 text-sm font-semibold rounded-lg transition-all ${
+            className={`py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               role === 'employee'
                 ? 'bg-[#ff5722] text-white shadow-md'
                 : 'text-gray-400 hover:text-white'
@@ -96,7 +117,7 @@ export default function LoginPage() {
               setIsSignUp(false);
               setErrorMsg('');
             }}
-            className={`py-2 text-sm font-semibold rounded-lg transition-all ${
+            className={`py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               role === 'manager'
                 ? 'bg-[#ff5722] text-white shadow-md'
                 : 'text-gray-400 hover:text-white'
@@ -116,7 +137,7 @@ export default function LoginPage() {
         </h2>
         <p className="text-xs text-gray-400 mb-6">
           {role === 'manager'
-            ? 'Access restricted to official Exampur management accounts.'
+            ? 'Access restricted strictly to @exampur.com Google Workspace accounts.'
             : 'Sign in with your official Exampur Google account or email.'}
         </p>
 
@@ -144,7 +165,7 @@ export default function LoginPage() {
               d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
             />
           </svg>
-          Continue with Exampur Google Workspace
+          Continue with Google Workspace
         </button>
 
         {/* Error Notification */}
@@ -157,7 +178,6 @@ export default function LoginPage() {
         {/* Employee Only: Password Form & Create Account */}
         {role === 'employee' && (
           <>
-            {/* Divider */}
             <div className="relative flex items-center justify-center mb-6">
               <div className="border-t border-gray-700 w-full"></div>
               <span className="bg-[#161b22] px-3 text-[10px] font-bold text-gray-500 tracking-wider uppercase absolute">
@@ -196,7 +216,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition focus:outline-none"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition focus:outline-none cursor-pointer"
                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
@@ -211,13 +231,17 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#ff5722] hover:bg-[#f4511e] disabled:opacity-50 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition shadow-lg mt-2 cursor-pointer"
+                className="w-full bg-[#ff5722] hover:bg-[#f4511e] disabled:opacity-50 text-white font-semibold text-sm py-2.5 px-4 rounded-xl transition shadow-lg mt-2 cursor-pointer flex items-center justify-center gap-2"
               >
-                {loading
-                  ? 'Verifying...'
-                  : isSignUp
-                  ? 'Create Employee Account'
-                  : 'Sign In with Email'}
+                {loading ? (
+                  <>
+                    <Sparkles className="w-4 h-4 animate-spin" /> Verifying...
+                  </>
+                ) : isSignUp ? (
+                  'Create Employee Account'
+                ) : (
+                  'Sign In with Email'
+                )}
               </button>
             </form>
 
@@ -231,7 +255,7 @@ export default function LoginPage() {
                       setIsSignUp(false);
                       setErrorMsg('');
                     }}
-                    className="text-[#ff5722] hover:underline font-semibold"
+                    className="text-[#ff5722] hover:underline font-semibold cursor-pointer"
                   >
                     Sign In
                   </button>
@@ -245,7 +269,7 @@ export default function LoginPage() {
                       setIsSignUp(true);
                       setErrorMsg('');
                     }}
-                    className="text-[#ff5722] hover:underline font-semibold"
+                    className="text-[#ff5722] hover:underline font-semibold cursor-pointer"
                   >
                     Create Account
                   </button>
