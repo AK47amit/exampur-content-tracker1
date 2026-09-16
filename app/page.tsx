@@ -799,14 +799,14 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // FIXED & ENHANCED Filter 1: Currently Delegated Tasks Search
+  // FULLY BULLETPROOF Filter 1: Currently Delegated Tasks Search
   const filteredAssignments = useMemo(() => {
     if (!searchDelegated.trim()) return assignments;
     const q = searchDelegated.toLowerCase().trim();
 
     return assignments.filter((a) => {
-      const employee = profilesList.find((p) => String(p.id) === String(a.assigned_to));
-      const empEmail = (employee?.email || a.assigned_to || "").toLowerCase();
+      // Direct lookup from profileEmailMap or profilesList fallback
+      const empEmail = (profileEmailMap.get(String(a.assigned_to)) || a.assigned_to || "").toLowerCase();
       const empName = formatUserDisplay(empEmail).toLowerCase();
       const topic = (a.topic_name || "").toLowerCase();
       const book = (a.subject_book || "").toLowerCase();
@@ -824,9 +824,9 @@ export default function PortalComponent() {
         status.includes(q)
       );
     });
-  }, [assignments, searchDelegated, profilesList]);
+  }, [assignments, searchDelegated, profileEmailMap]);
 
-  // Robust Filter 2: Queue Filter (Date Filter + Dedicated Searchbar)
+  // FULLY BULLETPROOF Filter 2: Queue Filter (Date Filter + Dedicated Searchbar)
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchDate = selectedDateFilter 
@@ -842,13 +842,15 @@ export default function PortalComponent() {
       const topic = (log.topic_name || "").toLowerCase();
       const book = (log.subject_book || "").toLowerCase();
       const cat = (log.task_category || "").toLowerCase();
+      const status = (log.status || "").toLowerCase();
 
       return (
         submitterName.includes(q) ||
         submitterEmail.includes(q) ||
         topic.includes(q) ||
         book.includes(q) ||
-        cat.includes(q)
+        cat.includes(q) ||
+        status.includes(q)
       );
     });
   }, [logs, selectedDateFilter, searchQueue, profileEmailMap]);
@@ -1362,7 +1364,6 @@ export default function PortalComponent() {
                   </select>
                 </div>
 
-                {/* Conditional Task Category: Only visible for Publications & Testing */}
                 {assignDept === "Publications & Testing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
@@ -1381,7 +1382,6 @@ export default function PortalComponent() {
                   </div>
                 )}
 
-                {/* Conditional Proofing Stage: Only visible for Proofing */}
                 {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Proofing Stage *</label>
@@ -1502,8 +1502,7 @@ export default function PortalComponent() {
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                       {filteredAssignments.map((a) => {
-                        const employee = profilesList.find(p => String(p.id) === String(a.assigned_to));
-                        const empEmail = employee?.email || a.assigned_to;
+                        const empEmail = profileEmailMap.get(String(a.assigned_to)) || a.assigned_to;
 
                         return (
                           <tr key={a.id} className="hover:bg-slate-800/40">
@@ -1512,7 +1511,7 @@ export default function PortalComponent() {
                                 {formatUserDisplay(empEmail)}
                               </span>
                               <span className="text-slate-500 text-[10px] font-mono">
-                                {empEmail.slice(0, 18)}...
+                                {String(empEmail).slice(0, 18)}...
                               </span>
                             </td>
                             <td className="p-2.5">
@@ -2082,7 +2081,7 @@ export default function PortalComponent() {
 
                 <button
                   type="button"
-                  onClick={() => setPreviewModalLog(Nll)}
+                  onClick={() => setPreviewModalLog(null)}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
                 >
                   Close
