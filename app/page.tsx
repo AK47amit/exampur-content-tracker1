@@ -1209,7 +1209,7 @@ export default function PortalComponent() {
                             Preview
                           </button>
 
-                          {/* Quick Edit/Correction Button (Available for rejected or review tasks) */}
+                          {/* Quick Edit/Correction Button */}
                           {l.status !== "approved" && (
                             <button
                               type="button"
@@ -1300,21 +1300,40 @@ export default function PortalComponent() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
-                  <select
-                    value={assignCategory}
-                    onChange={(e) => setAssignCategory(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
-                  >
-                    <option value="Question Formation">Question Formation</option>
-                    <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
-                    <option value="Proofing">Proofing</option>
-                    <option value="Solution Drafting">Solution Drafting</option>
-                    <option value="Translation">Translation</option>
-                    <option value="Review / Fact Check">Review / Fact Check</option>
-                  </select>
-                </div>
+                {/* Conditional Task Category: Only visible for Publications & Testing */}
+                {assignDept === "Publications & Testing" && (
+                  <div>
+                    <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
+                    <select
+                      value={assignCategory}
+                      onChange={(e) => setAssignCategory(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                    >
+                      <option value="Question Formation">Question Formation</option>
+                      <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
+                      <option value="Proofing">Proofing</option>
+                      <option value="Solution Drafting">Solution Drafting</option>
+                      <option value="Translation">Translation</option>
+                      <option value="Review / Fact Check">Review / Fact Check</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Conditional Proofing Stage: Only visible for Proofing */}
+                {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
+                  <div>
+                    <label className="text-slate-300 block mb-1 font-medium">Proofing Stage *</label>
+                    <select
+                      value={assignStage}
+                      onChange={(e) => setAssignStage(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                    >
+                      <option value="Proof 1">Proof 1</option>
+                      <option value="Proof 2">Proof 2</option>
+                      <option value="Final Quality Check">Final Quality Check</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="text-slate-300 block mb-1 font-medium">Target Quantity *</label>
