@@ -15,18 +15,20 @@ import {
   History, 
   Download, 
   Filter, 
-  RotateCcw,
-  AlertCircle,
-  TableProperties,
-  Sparkles,
-  Paperclip,
-  ExternalLink,
-  FileText,
-  Trash2,
-  UserPlus,
-  Briefcase,
-  CheckSquare,
-  BookOpen
+  RotateCcw, 
+  AlertCircle, 
+  TableProperties, 
+  Sparkles, 
+  Paperclip, 
+  ExternalLink, 
+  FileText, 
+  Trash2, 
+  UserPlus, 
+  Briefcase, 
+  CheckSquare, 
+  BookOpen,
+  X,
+  Layers
 } from "lucide-react";
 
 export default function PortalComponent() {
@@ -38,6 +40,9 @@ export default function PortalComponent() {
   const [activeTab, setActiveTab] = useState<"employee" | "manager">("employee");
   const [loadingUser, setLoadingUser] = useState(true);
 
+  // Active Tasks Modal State
+  const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
+
   // Work Logs, Attendance, Profiles & Assignments State
   const [logs, setLogs] = useState<any[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<any[]>([]);
@@ -46,6 +51,7 @@ export default function PortalComponent() {
 
   // Filter State (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
+  // Default to current Month: "YYYY-MM"
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
     return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -239,6 +245,10 @@ export default function PortalComponent() {
     return logs.filter((log) => currentUser && String(log.user_id) === String(currentUser.id));
   }, [logs, currentUser]);
 
+  const myPendingLogs = useMemo(() => {
+    return myPersonalLogs.filter((l) => l.status === "pending");
+  }, [myPersonalLogs]);
+
   // Unique remembered books for current employee
   const myRememberedBooks = useMemo(() => {
     const set = new Set<string>();
@@ -262,6 +272,7 @@ export default function PortalComponent() {
     setTopicName(task.topic_name || "");
     setQuantity(String(task.target_quantity || ""));
     setCompletingTaskId(task.id);
+    setShowActiveTasksModal(false);
     window.scrollTo({ top: 350, behavior: "smooth" });
   }
 
@@ -626,62 +637,42 @@ export default function PortalComponent() {
             
             {/* Employee Operational KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-slate-400 font-medium">My Active Tasks (Pending/Assigned)</p>
-                <p className="text-2xl font-bold text-orange-400 mt-1">
-                  {myAssignedTasks.length + myPersonalLogs.filter(l => l.status === "pending").length}
+              {/* CLICKABLE ACTIVE TASKS CARD */}
+              <button
+                type="button"
+                onClick={() => setShowActiveTasksModal(true)}
+                className="bg-slate-900 hover:bg-slate-800/80 border border-orange-500/50 hover:border-orange-500 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-lg group relative overflow-hidden"
+              >
+                <div className="flex justify-between items-start">
+                  <p className="text-xs text-orange-400 font-semibold group-hover:text-orange-300 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5" /> My Active Tasks (Pending/Assigned)
+                  </p>
+                  <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">View List &rarr;</span>
+                </div>
+                <p className="text-2xl font-bold text-orange-400 mt-2">
+                  {myAssignedTasks.length + myPendingLogs.length}
                 </p>
-              </div>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Under Review
+                </p>
+              </button>
+
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
                 <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">
+                <p className="text-2xl font-bold text-emerald-400 mt-2">
                   {myPersonalLogs.filter(l => l.status === "approved").length}
                 </p>
+                <p className="text-[11px] text-slate-400 mt-1">Verified output records</p>
               </div>
+
               <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
                 <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
-                <p className="text-2xl font-bold text-blue-400 mt-1">
+                <p className="text-2xl font-bold text-blue-400 mt-2">
                   {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
                 </p>
+                <p className="text-[11px] text-slate-400 mt-1">Cumulative verified count</p>
               </div>
             </div>
-
-            {/* Manager Assigned Tasks Tray */}
-            {myAssignedTasks.length > 0 && (
-              <div className="bg-slate-900 border border-orange-500/40 rounded-xl p-5 space-y-4 shadow-xl">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 text-orange-400">
-                    <Briefcase className="w-4 h-4 text-orange-500" />
-                    Tasks Assigned to You by Manager ({myAssignedTasks.length})
-                  </h3>
-                  <span className="text-[11px] text-slate-400">Click &quot;Work on Task&quot; to auto-fill form</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {myAssignedTasks.map((task) => (
-                    <div key={task.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-lg space-y-2">
-                      <div className="flex justify-between items-start">
-                        <span className="text-xs font-bold text-white">{task.topic_name}</span>
-                        <span className="text-[10px] bg-orange-950 text-orange-300 border border-orange-800 px-1.5 py-0.5 rounded font-mono">
-                          Target: {task.target_quantity}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-400">Book: {task.subject_book} ({task.task_category})</p>
-                      {task.deadline && (
-                        <p className="text-[10px] text-amber-400 font-mono">Deadline: {task.deadline}</p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => selectTaskToWork(task)}
-                        className="w-full mt-2 py-1.5 bg-orange-600/30 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-700/60 rounded text-xs font-medium transition cursor-pointer flex items-center justify-center gap-1.5"
-                      >
-                        <CheckSquare className="w-3.5 h-3.5" />
-                        {completingTaskId === task.id ? "Working on this..." : "Work on Task"}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Submission Form */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
@@ -1266,6 +1257,133 @@ export default function PortalComponent() {
             </div>
           </div>
         )}
+
+        {/* ================= ACTIVE TASKS POPUP MODAL ================= */}
+        {showActiveTasksModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+              
+              {/* Modal Header */}
+              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-orange-600/20 text-orange-500 rounded-lg">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Active Tasks Overview</h3>
+                    <p className="text-xs text-slate-400">Assigned delegation & pending verification logs</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowActiveTasksModal(false)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto space-y-6">
+                
+                {/* Section 1: Assigned by Manager */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
+                      <Briefcase className="w-4 h-4" /> Delegated By Manager ({myAssignedTasks.length})
+                    </h4>
+                    <span className="text-[10px] text-slate-500">Awaiting your completion</span>
+                  </div>
+
+                  {myAssignedTasks.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {myAssignedTasks.map((task) => (
+                        <div key={task.id} className="bg-slate-950 border border-slate-800 hover:border-orange-500/40 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold text-white">{task.topic_name}</span>
+                              <span className="text-[10px] bg-orange-950 text-orange-300 border border-orange-800 px-2 py-0.5 rounded font-mono">
+                                Target: {task.target_quantity} Units
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-400">
+                              Book: <span className="text-slate-200">{task.subject_book}</span> &bull; {task.task_category}
+                            </p>
+                            {task.deadline && (
+                              <p className="text-[11px] text-amber-400 font-mono">Target Deadline: {task.deadline}</p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => selectTaskToWork(task)}
+                            className="w-full sm:w-auto px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                          >
+                            <CheckSquare className="w-3.5 h-3.5" />
+                            Work on this Task
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs text-slate-500">
+                      No delegated tasks assigned by manager right now.
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Under Review Submissions */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                      <Clock className="w-4 h-4" /> Pending Manager Review ({myPendingLogs.length})
+                    </h4>
+                    <span className="text-[10px] text-slate-500">Submitted & awaiting verification</span>
+                  </div>
+
+                  {myPendingLogs.length > 0 ? (
+                    <div className="space-y-2">
+                      {myPendingLogs.map((log) => (
+                        <div key={log.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center text-xs">
+                          <div>
+                            <p className="font-semibold text-white">{log.topic_name}</p>
+                            <p className="text-[11px] text-slate-400">{log.subject_book} &bull; {log.task_category}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">Submitted: {new Date(log.created_at).toLocaleDateString("en-CA")}</p>
+                          </div>
+                          <div className="text-right space-y-1">
+                            <span className="text-sm font-bold text-white font-mono">{log.quantity} Qty</span>
+                            <div>
+                              <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold uppercase">
+                                PENDING
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs text-slate-500">
+                      No submissions currently pending manager approval.
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowActiveTasksModal(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
+
       </div>
     </main>
   );
