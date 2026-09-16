@@ -79,12 +79,12 @@ export default function PortalComponent() {
   const [profilesList, setProfilesList] = useState<any[]>([]);
   const [assignments, setAssignments] = useState<any[]>([]);
 
-  // Search States for the 3 Admin Panels
+  // Search States
   const [searchDelegated, setSearchDelegated] = useState("");
   const [searchQueue, setSearchQueue] = useState("");
   const [searchTimesheet, setSearchTimesheet] = useState("");
 
-  // Filter State (Manager View)
+  // Date Filters (Manager View)
   const [selectedDateFilter, setSelectedDateFilter] = useState("");
   const [selectedMonthFilter, setSelectedMonthFilter] = useState(() => {
     const today = new Date();
@@ -427,7 +427,7 @@ export default function PortalComponent() {
 
   // 4. Employee Login Flash Alert
   useEffect(() => {
-    if (userRole !== "admin" || !currentUser) return;
+    if (userRole === "admin" || !currentUser) return;
 
     if (myRejectedLogs.length > 0) {
       const recentRejected = myRejectedLogs[0];
@@ -799,21 +799,32 @@ export default function PortalComponent() {
     }).sort((a, b) => b.monthTotalUnits - a.monthTotalUnits);
   }, [logs, attendanceRecords, profilesList, selectedMonthFilter, monthDays]);
 
-  // Filter 1: Delegated Tasks Search Filter
+  // Robust Filter 1: Currently Delegated Tasks Search
   const filteredAssignments = useMemo(() => {
     if (!searchDelegated.trim()) return assignments;
     const q = searchDelegated.toLowerCase().trim();
+
     return assignments.filter((a) => {
-      const emp = profilesList.find((p) => p.id === a.assigned_to);
-      const empName = formatUserDisplay(emp?.email).toLowerCase();
-      const empEmail = (emp?.email || "").toLowerCase();
+      const employee = profilesList.find((p) => String(p.id) === String(a.assigned_to));
+      const empEmail = (employee?.email || a.assigned_to || "").toLowerCase();
+      const empName = formatUserDisplay(empEmail).toLowerCase();
       const topic = (a.topic_name || "").toLowerCase();
       const book = (a.subject_book || "").toLowerCase();
-      return empName.includes(q) || empEmail.includes(q) || topic.includes(q) || book.includes(q);
+      const dept = (a.department || "").toLowerCase();
+      const cat = (a.task_category || "").toLowerCase();
+
+      return (
+        empEmail.includes(q) ||
+        empName.includes(q) ||
+        topic.includes(q) ||
+        book.includes(q) ||
+        dept.includes(q) ||
+        cat.includes(q)
+      );
     });
   }, [assignments, searchDelegated, profilesList]);
 
-  // Filter 2: Queue Filter (Date + Searchbar)
+  // Robust Filter 2: Queue Filter (Date Filter + Dedicated Searchbar)
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
       const matchDate = selectedDateFilter 
@@ -828,12 +839,19 @@ export default function PortalComponent() {
       const submitterName = formatUserDisplay(submitterEmail).toLowerCase();
       const topic = (log.topic_name || "").toLowerCase();
       const book = (log.subject_book || "").toLowerCase();
+      const cat = (log.task_category || "").toLowerCase();
 
-      return submitterName.includes(q) || submitterEmail.includes(q) || topic.includes(q) || book.includes(q);
+      return (
+        submitterName.includes(q) ||
+        submitterEmail.includes(q) ||
+        topic.includes(q) ||
+        book.includes(q) ||
+        cat.includes(q)
+      );
     });
   }, [logs, selectedDateFilter, searchQueue, profileEmailMap]);
 
-  // Filter 3: Master Timesheet Search Filter
+  // Robust Filter 3: Master Timesheet Search Filter
   const filteredTimesheetData = useMemo(() => {
     if (!searchTimesheet.trim()) return masterTimesheetData;
     const q = searchTimesheet.toLowerCase().trim();
@@ -1342,6 +1360,7 @@ export default function PortalComponent() {
                   </select>
                 </div>
 
+                {/* Conditional Task Category: Only visible for Publications & Testing */}
                 {assignDept === "Publications & Testing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
@@ -1360,6 +1379,7 @@ export default function PortalComponent() {
                   </div>
                 )}
 
+                {/* Conditional Proofing Stage: Only visible for Proofing */}
                 {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
                   <div>
                     <label className="text-slate-300 block mb-1 font-medium">Proofing Stage *</label>
@@ -1424,7 +1444,7 @@ export default function PortalComponent() {
                 </div>
               </form>
 
-              {/* 1. Delegated Tasks Table with Searchbar & Fixed Height Scroll */}
+              {/* 1. Delegated Tasks Table with Fixed Height Scroll & Searchbar */}
               <div className="border-t border-slate-800 pt-4">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3">
                   <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
@@ -1432,6 +1452,7 @@ export default function PortalComponent() {
                   </h4>
                   
                   <div className="flex items-center gap-2">
+                    {/* Delegated Searchbar */}
                     <div className="relative">
                       <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
                       <input
@@ -1439,10 +1460,14 @@ export default function PortalComponent() {
                         placeholder="Search employee or task..."
                         value={searchDelegated}
                         onChange={(e) => setSearchDelegated(e.target.value)}
-                        className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1 text-[11px] text-white focus:border-orange-500 outline-none w-48"
+                        className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-[11px] text-white focus:border-orange-500 outline-none w-52"
                       />
                       {searchDelegated && (
-                        <button onClick={() => setSearchDelegated("")} className="absolute right-2 top-1.5 text-slate-400 hover:text-white">
+                        <button 
+                          type="button" 
+                          onClick={() => setSearchDelegated("")} 
+                          className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                        >
                           <X className="w-3 h-3" />
                         </button>
                       )}
@@ -1475,7 +1500,7 @@ export default function PortalComponent() {
                     </thead>
                     <tbody className="divide-y divide-slate-800">
                       {filteredAssignments.map((a) => {
-                        const employee = profilesList.find(p => p.id === a.assigned_to);
+                        const employee = profilesList.find(p => String(p.id) === String(a.assigned_to));
                         const empEmail = employee?.email || a.assigned_to;
 
                         return (
@@ -1524,8 +1549,8 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* 2. Verification Queue Filter Bar with Date + Employee Searchbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            {/* Daily Queue Filter Bar (Clean - No Searchbar) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Filter className="w-4 h-4 text-orange-500" />
@@ -1541,28 +1566,11 @@ export default function PortalComponent() {
                   <button
                     onClick={() => setSelectedDateFilter("")}
                     className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs cursor-pointer"
-                    title="Clear filter"
+                    title="Clear date filter"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </button>
                 )}
-
-                {/* Searchbar for Verification Queue */}
-                <div className="relative ml-2">
-                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search employee in queue..."
-                    value={searchQueue}
-                    onChange={(e) => setSearchQueue(e.target.value)}
-                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-56"
-                  />
-                  {searchQueue && (
-                    <button onClick={() => setSearchQueue("")} className="absolute right-2 top-2 text-slate-400 hover:text-white">
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
               </div>
 
               <div className="flex items-center gap-3 flex-wrap">
@@ -1603,11 +1611,34 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Verification Queue with Fixed Height Scroll & Sticky Header */}
+            {/* 2. Verification Queue with Dedicated Searchbar & Fixed Scroll */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-              <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue ({filteredLogs.length})
-              </h3>
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue ({filteredLogs.length})
+                </h3>
+
+                {/* Dedicated Queue Searchbar */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employee or topic..."
+                    value={searchQueue}
+                    onChange={(e) => setSearchQueue(e.target.value)}
+                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-xs text-white focus:border-orange-500 outline-none w-56"
+                  />
+                  {searchQueue && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchQueue("")} 
+                      className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
               
               <div className="overflow-y-auto max-h-80 border border-slate-800 rounded-lg">
                 <table className="w-full text-left text-xs text-slate-300 border-collapse">
@@ -1694,7 +1725,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* 3. Monthly Master Performance Timesheet with Search & Fixed Scroll */}
+            {/* 3. Monthly Master Performance Timesheet Matrix with Search & Fixed Scroll */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-800 pb-4">
                 <div>
@@ -1706,7 +1737,7 @@ export default function PortalComponent() {
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Searchbar for Master Timesheet */}
+                  {/* Master Timesheet Searchbar */}
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
                     <input
@@ -1714,10 +1745,14 @@ export default function PortalComponent() {
                       placeholder="Search employee matrix..."
                       value={searchTimesheet}
                       onChange={(e) => setSearchTimesheet(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-52"
+                      className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-52"
                     />
                     {searchTimesheet && (
-                      <button onClick={() => setSearchTimesheet("")} className="absolute right-2 top-2 text-slate-400 hover:text-white">
+                      <button 
+                        type="button" 
+                        onClick={() => setSearchTimesheet("")} 
+                        className="absolute right-2 top-2 text-slate-400 hover:text-white"
+                      >
                         <X className="w-3 h-3" />
                       </button>
                     )}
