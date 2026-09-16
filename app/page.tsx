@@ -507,6 +507,40 @@ export default function PortalComponent() {
     }
   }
 
+  // Delete/Cancel a single delegated task
+  async function handleDeleteSingleAssignment(id: string) {
+    if (!confirm("Are you sure you want to delete and cancel this delegated task?")) return;
+    const { error } = await supabase.from("task_assignments").delete().eq("id", id);
+    if (error) {
+      alert("Error deleting task: " + error.message);
+    } else {
+      fetchAssignments();
+    }
+  }
+
+  // Master Wipe: Clear all delegated tasks
+  async function handleClearAllAssignments() {
+    if (!confirm("WARNING: Are you sure you want to permanently delete ALL delegated tasks?")) return;
+    const check = prompt("Type 'CLEAR' in capital letters to wipe all delegated tasks:");
+    if (check !== "CLEAR") {
+      alert("Action cancelled. Verification word did not match.");
+      return;
+    }
+
+    // Handles both integer id and uuid safely
+    const { error } = await supabase
+      .from("task_assignments")
+      .delete()
+      .not("id", "is", null);
+
+    if (error) {
+      alert("Error clearing assigned tasks: " + error.message);
+    } else {
+      alert("All delegated tasks have been cleared successfully.");
+      fetchAssignments();
+    }
+  }
+
   async function updateStatus(logId: string, newStatus: "approved" | "rejected") {
     let remarks = "Approved by Manager";
     if (newStatus === "rejected") {
@@ -1156,11 +1190,25 @@ export default function PortalComponent() {
                 </div>
               </form>
 
-              {/* Manager Assigned Tasks Table */}
+              {/* Manager Assigned Tasks Table with Delete & Clear Controls */}
               <div className="border-t border-slate-800 pt-4">
-                <h4 className="text-xs font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                  <Briefcase className="w-3.5 h-3.5 text-orange-500" /> Currently Delegated Tasks ({assignments.length})
-                </h4>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                    <Briefcase className="w-3.5 h-3.5 text-orange-500" /> Currently Delegated Tasks ({assignments.length})
+                  </h4>
+                  {assignments.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllAssignments}
+                      className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer"
+                      title="Delete all delegated tasks"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Clear All Tasks
+                    </button>
+                  )}
+                </div>
+
                 <div className="overflow-x-auto max-h-56">
                   <table className="w-full text-left text-[11px] text-slate-300">
                     <thead className="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider sticky top-0 border-b border-slate-800">
@@ -1168,11 +1216,12 @@ export default function PortalComponent() {
                         <th className="p-2">Employee</th>
                         <th className="p-2">Topic / Book</th>
                         <th className="p-2 text-center">Target Qty</th>
-                        <th className="p-2 text-right">Status</th>
+                        <th className="p-2 text-center">Status</th>
+                        <th className="p-2 text-right">Action</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {assignments.slice(0, 10).map((a) => {
+                      {assignments.slice(0, 15).map((a) => {
                         const employee = profilesList.find(p => p.id === a.assigned_to);
                         return (
                           <tr key={a.id} className="hover:bg-slate-800/40">
@@ -1182,19 +1231,29 @@ export default function PortalComponent() {
                               <span className="text-slate-500 block text-[10px]">{a.subject_book}</span>
                             </td>
                             <td className="p-2 text-center font-bold text-orange-400">{a.target_quantity}</td>
-                            <td className="p-2 text-right">
+                            <td className="p-2 text-center">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
                                 a.status === "completed" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-300 border border-amber-800"
                               }`}>
                                 {a.status}
                               </span>
                             </td>
+                            <td className="p-2 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSingleAssignment(a.id)}
+                                className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                                title="Cancel and Delete Task"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
                           </tr>
                         );
                       })}
                       {assignments.length === 0 && (
                         <tr>
-                          <td colSpan={4} className="p-3 text-center text-slate-500">No delegated tasks yet.</td>
+                          <td colSpan={5} className="p-3 text-center text-slate-500">No delegated tasks yet.</td>
                         </tr>
                       )}
                     </tbody>
