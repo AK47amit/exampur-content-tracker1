@@ -108,6 +108,21 @@ export default function PortalComponent() {
   const profilesRef = useRef<any[]>([]);
   profilesRef.current = profilesList;
 
+  // Sound chime trigger
+  function playNotificationSound() {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.setValueAtTime(659.25, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.2);
+    } catch (_) {}
+  }
+
   // 1. Session Lifecycle, Role Verification & Domain Check
   useEffect(() => {
     async function initAuth() {
@@ -156,12 +171,36 @@ export default function PortalComponent() {
     };
   }, []);
 
-  // 2. Realtime Listeners with Manager Toast on New Log Submissions
+  // 2. Realtime Listeners (Postgres Changes + Direct Broadcast Channel)
   useEffect(() => {
     fetchLogs();
     fetchAttendance();
     fetchProfiles();
     fetchAssignments();
+
+    // Dual-layer listener: Broadcast (0ms latency) + Postgres Changes
+    const broadcastChannel = supabase
+      .channel("exampur-live-events", {
+        config: { broadcast: { self: false } },
+      })
+      .on("broadcast", { event: "new_work_submission" }, (eventPayload: any) => {
+        const payloadData = eventPayload.payload;
+        fetchLogs();
+
+        setManagerToast({
+          show: true,
+          employeeEmail: payloadData.employeeEmail || "An Employee",
+          topic: payloadData.topic || "Daily Task",
+          quantity: payloadData.quantity || 0,
+        });
+
+        playNotificationSound();
+
+        setTimeout(() => {
+          setManagerToast(null);
+        }, 9000);
+      })
+      .subscribe();
 
     const logsChannel = supabase
       .channel("realtime-work-logs-listener")
@@ -174,7 +213,6 @@ export default function PortalComponent() {
           const newLog = payload.new;
           if (!newLog) return;
 
-          // Find email from current state ref or query directly
           let empEmail = "Employee";
           const matchedProfile = profilesRef.current.find(
             (p) => String(p.id) === String(newLog.user_id)
@@ -191,7 +229,6 @@ export default function PortalComponent() {
             if (pData?.email) empEmail = pData.email;
           }
 
-          // Trigger Toast on Manager's screen
           setManagerToast({
             show: true,
             employeeEmail: empEmail,
@@ -199,18 +236,7 @@ export default function PortalComponent() {
             quantity: newLog.quantity || 0,
           });
 
-          // Soft audio alert
-          try {
-            const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
-            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
-          } catch (_) {}
+          playNotificationSound();
 
           setTimeout(() => {
             setManagerToast(null);
@@ -245,6 +271,7 @@ export default function PortalComponent() {
       .subscribe();
 
     return () => {
+      supabase.removeChannel(broadcastChannel);
       supabase.removeChannel(logsChannel);
       supabase.removeChannel(attendanceChannel);
       supabase.removeChannel(profilesChannel);
@@ -365,7 +392,34 @@ export default function PortalComponent() {
     return assignments.filter((a) => currentUser && String(a.assigned_to) === String(currentUser.id) && a.status !== "completed");
   }, [assignments, currentUser]);
 
-  // Employee Login Flash Alert
+  const managerPendingLogs = useMemo(() => {
+    return logs.filter((l) => l.status === "pending");
+  }, [logs]);
+
+  // 3. Manager On-Load / Pending Review Flash Alert
+  useEffect(() => {
+    if (userRole !== "admin" || !currentUser) return;
+
+    if (managerPendingLogs.length > 0 && !managerToast) {
+      const firstPending = managerPendingLogs[0];
+      const submitter = profileEmailMap.get(String(firstPending.user_id)) || "Employee";
+
+      setManagerToast({
+        show: true,
+        employeeEmail: submitter,
+        topic: `${managerPendingLogs.length} Task(s) Pending Review`,
+        quantity: firstPending.quantity || 0,
+      });
+
+      const timer = setTimeout(() => {
+        setManagerToast(null);
+      }, 7000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [userRole, currentUser, managerPendingLogs.length]);
+
+  // 4. Employee Login Flash Alert
   useEffect(() => {
     if (userRole === "admin" || !currentUser) return;
 
@@ -492,6 +546,22 @@ export default function PortalComponent() {
       },
     ]);
 
+    // Send instant zero-lag broadcast to Manager
+    try {
+      const channel = supabase.channel("exampur-live-events");
+      await channel.send({
+        type: "broadcast",
+        event: "new_work_submission",
+        payload: {
+          employeeEmail: currentUser?.email,
+          topic: topicName.trim(),
+          quantity: parsedQty,
+        },
+      });
+    } catch (broadcastErr) {
+      console.error("Broadcast notification error:", broadcastErr);
+    }
+
     if (!error && completingTaskId) {
       await supabase
         .from("task_assignments")
@@ -605,6 +675,7 @@ export default function PortalComponent() {
     }
   }
 
+  // Fixed for BigInt primary key using numeric comparison
   async function handleClearAllLogs() {
     const isFirstConfirmed = confirm(
       "WARNING: Are you sure you want to permanently delete ALL work logs?\n\nThis will completely reset all dashboard metrics and timesheet records. This action cannot be undone."
@@ -788,9 +859,13 @@ export default function PortalComponent() {
                 {managerToast.employeeEmail}
               </p>
               <div className="pt-1 text-slate-300 flex items-center gap-2">
-                <span>Topic: <b className="text-white">{managerToast.topic}</b></span>
-                <span>&bull;</span>
-                <span className="text-orange-400 font-bold">{managerToast.quantity} Qty</span>
+                <span>Status: <b className="text-white">{managerToast.topic}</b></span>
+                {managerToast.quantity > 0 && (
+                  <>
+                    <span>&bull;</span>
+                    <span className="text-orange-400 font-bold">{managerToast.quantity} Qty</span>
+                  </>
+                )}
               </div>
             </div>
             <button
