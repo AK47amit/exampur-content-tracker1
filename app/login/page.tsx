@@ -1,4 +1,4 @@
-'type client';
+'use client';
 
 import React, { useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -40,7 +40,10 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        // 2. Trigger Custom Nodemailer API to send email strictly to Recovery Email
+        // 2. Force sign out so user cannot bypass and auto-login without checking recovery email
+        await supabase.auth.signOut();
+
+        // 3. Trigger Custom Nodemailer API to send email strictly to Recovery Email
         try {
           const mailRes = await fetch('/api/send-mail', {
             method: 'POST',
@@ -58,7 +61,7 @@ export default function LoginPage() {
           console.error('Mail dispatch network error:', mailErr);
         }
 
-        alert('Account created successfully! Verification details have been sent to your recovery email.');
+        alert('Account created successfully! Verification details have been sent to your recovery email. Please check your recovery inbox.');
         setIsSignUp(false);
         setEmail('');
         setPassword('');
