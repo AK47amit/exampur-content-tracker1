@@ -35,7 +35,8 @@ import {
   Eye,
   Edit3,
   Search,
-  Users
+  Users,
+  UserCheck2
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -180,7 +181,7 @@ export default function PortalComponent() {
     };
   }, []);
 
-  // 2. Realtime Listeners (Postgres Changes + Direct Broadcast Channel)
+  // 2. Realtime Listeners
   useEffect(() => {
     fetchLogs();
     fetchAttendance();
@@ -354,39 +355,36 @@ export default function PortalComponent() {
     }
   }
 
-  // Employee Soft Deletion Handler (Sets role to 'deactivated')
-  async function handleDeleteEmployee(userId: string, email: string) {
-    if (userId === currentUser?.id) {
-      alert("You cannot delete your own active manager account!");
-      return;
-    }
+  // Employee Deactivate / Activate Toggle Handler
+  async function handleToggleEmployeeStatus(userId: string, email: string, currentRole: string) {
+    const isDeactivating = currentRole !== "deactivated";
+    const actionName = isDeactivating ? "deactivate" : "activate";
 
     const confirmText = prompt(
-      `WARNING: You are about to deactivate employee "${email}" from the portal active directory.\n\nType 'DELETE' in capital letters to confirm:`
+      `WARNING: You are about to ${actionName} employee "${email}".\n\nType 'CONFIRM' in capital letters to proceed:`
     );
-    if (confirmText !== "DELETE") {
-      alert("Deactivation cancelled. Verification text did not match.");
+    if (confirmText !== "CONFIRM") {
+      alert("Action cancelled. Verification text did not match.");
       return;
     }
 
     try {
+      const newRole = isDeactivating ? "deactivated" : "employee";
       const { error } = await supabase
         .from("profiles")
-        .update({ role: "deactivated" })
+        .update({ role: newRole })
         .eq("id", userId);
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
 
-      alert(`Employee "${email}" has been successfully deactivated and removed from active records.`);
+      alert(`Employee "${email}" has been successfully ${isDeactivating ? "deactivated" : "activated"}!`);
       
       await fetchProfiles();
       await fetchLogs();
       await fetchAssignments();
       await fetchAttendance();
     } catch (err: any) {
-      alert("Failed to deactivate employee: " + (err.message || "Permission denied."));
+      alert("Failed to update employee status: " + (err.message || "Permission denied."));
     }
   }
 
@@ -903,12 +901,11 @@ export default function PortalComponent() {
     });
   }, [masterTimesheetData, searchTimesheet]);
 
-  // Filter 4: Team Directory Search Filter (Excludes deactivated users)
+  // Filter 4: Team Directory Search Filter (Shows all profiles including deactivated so admin can manage/activate them)
   const filteredTeamProfiles = useMemo(() => {
-    const activeProfiles = profilesList.filter((p) => p.role !== "deactivated");
-    if (!searchTeam.trim()) return activeProfiles;
+    if (!searchTeam.trim()) return profilesList;
     const q = searchTeam.toLowerCase().trim();
-    return activeProfiles.filter((p) => {
+    return profilesList.filter((p) => {
       const email = (p.email || "").toLowerCase();
       const name = formatUserDisplay(email).toLowerCase();
       const role = (p.role || "employee").toLowerCase();
@@ -1641,38 +1638,62 @@ export default function PortalComponent() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
-                    {filteredTeamProfiles.map((p) => (
-                      <tr key={p.id} className="hover:bg-slate-800/40">
-                        <td className="p-3 font-semibold text-white">
-                          {formatUserDisplay(p.email)}
-                        </td>
-                        <td className="p-3 text-cyan-300 font-mono text-[11px]">
-                          {p.email || "N/A"}
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            p.role === "admin" ? "bg-purple-950 text-purple-300 border border-purple-800" : "bg-blue-950 text-blue-300 border border-blue-800"
-                          }`}>
-                            {p.role || "employee"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-400 font-mono text-[11px]">
-                          {p.created_at ? p.created_at.slice(0, 10) : "N/A"}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEmployee(p.id, p.email)}
-                            disabled={p.id === currentUser?.id}
-                            className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-600 disabled:opacity-30 text-rose-300 hover:text-white border border-rose-800/80 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
-                            title="Deactivate and Remove Employee"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            Delete Account
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredTeamProfiles.map((p) => {
+                      const isDeactivated = p.role === "deactivated";
+
+                      return (
+                        <tr key={p.id} className={`hover:bg-slate-800/40 ${isDeactivated ? "opacity-60 bg-rose-950/10" : ""}`}>
+                          <td className="p-3 font-semibold text-white flex items-center gap-2">
+                            {formatUserDisplay(p.email)}
+                            {isDeactivated && (
+                              <span className="text-[9px] bg-rose-950 text-rose-300 border border-rose-800 px-1.5 py-0.5 rounded font-bold uppercase">
+                                Deactivated
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-cyan-300 font-mono text-[11px]">
+                            {p.email || "N/A"}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                              p.role === "admin" ? "bg-purple-950 text-purple-300 border border-purple-800" :
+                              isDeactivated ? "bg-rose-950 text-rose-300 border border-rose-800" :
+                              "bg-blue-950 text-blue-300 border border-blue-800"
+                            }`}>
+                              {p.role || "employee"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                            {p.created_at ? p.created_at.slice(0, 10) : "N/A"}
+                          </td>
+                          <td className="p-3 text-right">
+                            {isDeactivated ? (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
+                                disabled={p.id === currentUser?.id}
+                                className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-600 disabled:opacity-30 text-emerald-300 hover:text-white border border-emerald-800 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                                title="Re-activate Employee Account"
+                              >
+                                <UserCheck2 className="w-3.5 h-3.5" />
+                                Activate Account
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
+                                disabled={p.id === currentUser?.id}
+                                className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-600 disabled:opacity-30 text-rose-300 hover:text-white border border-rose-800/80 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                                title="Deactivate Employee Account"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                Delete Account
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
                     {filteredTeamProfiles.length === 0 && (
                       <tr>
                         <td colSpan={5} className="p-6 text-center text-slate-500">No employees found matching your search.</td>
