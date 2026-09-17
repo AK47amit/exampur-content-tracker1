@@ -2,11 +2,11 @@
 
 /**
  * ============================================================================
- * EXAMPUR CONTENT OPERATIONS - AUTHENTICATION & REGISTRATION MODULE
+ * EXAMPUR CONTENT OPERATIONS - GOOGLE WORKSPACE SSO & AUTH MODULE
  * ============================================================================
  * File: app/login/page.tsx
- * Description: Handles secure employee login, manager/admin access, and 
- * employee registration with official Exampur ID mapping and custom recovery email routing.
+ * Description: Restores Google Workspace OAuth authentication flow strictly for 
+ * official Exampur domains, along with manager login and recovery email routing.
  * ============================================================================
  */
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
   const [isSignUp, setIsSignUp] = useState(true);
   
   // ---------------------------------------------------------------------------
-  // Form Input Field States
+  // Form Input Field States (For Manual Admin or Recovery routing)
   // ---------------------------------------------------------------------------
   const [email, setEmail] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -40,7 +40,29 @@ export default function LoginPage() {
 
   /**
    * ===========================================================================
-   * COMPREHENSIVE AUTHENTICATION & REGISTRATION SUBMISSION HANDLER
+   * GOOGLE WORKSPACE SSO AUTHENTICATION HANDLER
+   * ===========================================================================
+   */
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Google Workspace authentication failed.');
+      setLoading(false);
+    }
+  };
+
+  /**
+   * ===========================================================================
+   * MANUAL AUTHENTICATION & REGISTRATION SUBMISSION HANDLER
    * ===========================================================================
    */
   const handleAuth = async (e: React.FormEvent) => {
@@ -53,12 +75,14 @@ export default function LoginPage() {
       const officialEmail = email.trim().toLowerCase();
       const personalRecoveryEmail = recoveryEmail.trim().toLowerCase();
 
-      // -----------------------------------------------------------------------
-      // EMPLOYEE REGISTRATION FLOW
-      // -----------------------------------------------------------------------
+      // Ensure official domain check for employee flows
+      if (tab === 'employee' && !officialEmail.endsWith('@exampur.com')) {
+        throw new Error('Only official @exampur.com Google Workspace accounts are authorized.');
+      }
+
       if (tab === 'employee' && isSignUp) {
         if (!personalRecoveryEmail) {
-          throw new Error('Recovery email is required for employee registration.');
+          throw new Error('Personal recovery email is required for registration.');
         }
 
         if (personalRecoveryEmail === officialEmail) {
@@ -99,7 +123,6 @@ export default function LoginPage() {
           console.error('Network exception caught during mail dispatcher call:', mailNetworkErr);
         }
 
-        // Set success feedback state and reset form variables cleanly
         setSuccessMsg(
           'Account successfully created! Verification instructions have been dispatched exclusively to your recovery email inbox.'
         );
@@ -109,9 +132,7 @@ export default function LoginPage() {
         setRecoveryEmail('');
         
       } else {
-        // -----------------------------------------------------------------------
-        // STANDARD SIGN IN FLOW (Employee Sign-In & Admin Sign-In)
-        // -----------------------------------------------------------------------
+        // Standard Sign In Execution Flow (Handles both Employee Sign-In and Admin Sign-In)
         const { data, error } = await supabase.auth.signInWithPassword({
           email: officialEmail,
           password,
@@ -189,7 +210,7 @@ export default function LoginPage() {
             {tab === 'admin'
               ? 'Sign in using authorized system administrator credentials to oversee records.'
               : isSignUp
-              ? 'Sign in with your official Exampur Google account or email.'
+              ? 'Sign in with your official Exampur Google account or email. Only registered Google Workspace accounts are authorized.'
               : 'Enter your official credentials to access your secure operational dashboard.'}
           </p>
         </div>
@@ -215,12 +236,12 @@ export default function LoginPage() {
         )}
 
         {/* =================================================================== */}
-        {/* GOOGLE WORKSPACE INTEGRATION BUTTON (Conditional Rendering)         */}
+        {/* GOOGLE WORKSPACE INTEGRATION BUTTON                                 */}
         {/* =================================================================== */}
         {tab === 'employee' && isSignUp && (
           <button
             type="button"
-            onClick={() => alert('Google Workspace Single Sign-On can be integrated via Supabase Auth Provider settings.')}
+            onClick={handleGoogleLogin}
             className="w-full bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-white font-medium py-2.5 px-4 rounded-lg flex items-center justify-center space-x-3 transition duration-200 mb-6 shadow-sm"
           >
             <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24">
@@ -250,7 +271,7 @@ export default function LoginPage() {
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1.5 tracking-wider">
-              {tab === 'admin' ? 'Admin Email Address *' : 'Email Address *'}
+              {tab === 'admin' ? 'Admin Email Address *' : 'Official Exampur ID *'}
             </label>
             <input
               type="email"
@@ -266,7 +287,7 @@ export default function LoginPage() {
           {tab === 'employee' && isSignUp && (
             <div>
               <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1.5 tracking-wider">
-                Recovery Email *
+                Personal Recovery Email *
               </label>
               <input
                 type="email"
