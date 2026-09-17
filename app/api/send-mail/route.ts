@@ -3,11 +3,18 @@ import nodemailer from 'nodemailer';
 
 export async function POST(req: Request) {
   try {
-    const { officialEmail, recoveryEmail } = await req.json();
+    const body = await req.json();
+    const { officialEmail, recoveryEmail } = body;
 
     console.log('--- API ROUTE HIT ---');
     console.log('Official Email:', officialEmail);
     console.log('Recovery Email:', recoveryEmail);
+    console.log('SMTP User Configured:', process.env.SMTP_EMAIL ? 'YES' : 'NO');
+    console.log('SMTP Pass Configured:', process.env.SMTP_PASSWORD ? 'YES' : 'NO');
+
+    if (!recoveryEmail || !officialEmail) {
+      return NextResponse.json({ error: 'Missing required email fields in request payload.' }, { status: 400 });
+    }
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -46,6 +53,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, response: info.response });
   } catch (error: any) {
     console.error('Nodemailer Critical Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Internal Server Error during mail dispatch' }, { status: 500 });
   }
 }
