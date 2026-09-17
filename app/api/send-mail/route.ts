@@ -1,16 +1,51 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { officialEmail, recoveryEmail, isReset } = body;
+    const { officialEmail, recoveryEmail, isReset, newPassword } = body;
 
     console.log('--- API ROUTE HIT ---');
-    console.log('Official Email:', officialEmail);
-    console.log('Recovery Email:', recoveryEmail);
-    console.log('Is Password Reset:', isReset ? 'YES' : 'NO');
+    console.log('Action Type:', isReset ? (newPassword ? 'PERFORM PASSWORD UPDATE' : 'SEND RESET MAIL') : 'SEND WELCOME MAIL');
 
+    // Case 1: Execute direct password update via Admin client (bypasses session missing error)
+    if (isReset && newPassword) {
+      if (!officialEmail || !newPassword) {
+        return NextResponse.json({ error: 'Email and new password are required.' }, { status: 400 });
+      }
+
+      const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
+      if (listError) throw listError;
+
+      const user = usersData.users.find((u) => u.email?.toLowerCase() === officialEmail.toLowerCase());
+
+      if (!user) {
+        return NextResponse.json({ error: 'User not found with this email address.' }, { status: 404 });
+      }
+
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        password: newPassword,
+      });
+
+      if (updateError) throw updateError;
+
+      return NextResponse.json({ success: true, message: 'Password updated successfully' });
+    }
+
+    // Case 2: Send Email via Nodemailer
     if (!recoveryEmail || !officialEmail) {
       return NextResponse.json({ error: 'Missing required email fields in request payload.' }, { status: 400 });
     }
@@ -48,7 +83,7 @@ export async function POST(req: Request) {
         `,
       };
     } else {
-      // Standard Account Creation / Welcome Email Template
+      // Standard Welcome Email Template
       mailOptions = {
         from: `"Exampur Content Operations" <${process.env.SMTP_EMAIL}>`,
         to: recoveryEmail,
@@ -78,7 +113,7 @@ export async function POST(req: Request) {
     console.log('Email sent successfully response:', info.response);
     return NextResponse.json({ success: true, response: info.response });
   } catch (error: any) {
-    console.error('Nodemailer Critical Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error during mail dispatch' }, { status: 500 });
+    console.error('API Error:', error);
+    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

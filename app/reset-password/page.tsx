@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { KeyRound, Sparkles } from 'lucide-react';
 
@@ -42,18 +41,27 @@ function ResetPasswordForm() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
+      const res = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officialEmail: email,
+          newPassword: newPassword,
+          isReset: true,
+        }),
       });
 
-      if (error) throw error;
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update password.');
+      }
 
       setSuccessMsg('Password successfully updated! Redirecting to login page...');
       setTimeout(() => {
         router.push('/login');
       }, 3000);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to update password. Please try again or request a new reset link.');
+      setErrorMsg(err.message || 'Failed to update password. Please try again.');
     } finally {
       setLoading(false);
     }
