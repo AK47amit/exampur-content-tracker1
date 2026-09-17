@@ -5,8 +5,9 @@ export async function POST(req: Request) {
   try {
     const { officialEmail, recoveryEmail } = await req.json();
 
-    console.log('Attempting to send email to:', recoveryEmail);
-    console.log('Using SMTP Email:', process.env.SMTP_EMAIL ? 'Configured' : 'Missing');
+    console.log('--- API ROUTE HIT ---');
+    console.log('Official Email:', officialEmail);
+    console.log('Recovery Email:', recoveryEmail);
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -34,17 +35,17 @@ export async function POST(req: Request) {
 
             <p style="color: #c9d1d9; font-size: 16px;">You can now securely log in to your dashboard using your official ID.</p>
             
-            <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://exampur-content-tracker1.vercel.app'}/login" style="display: inline-block; background-color: #ff5722; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
+            <a href="https://exampur-content-tracker1.vercel.app/login" style="display: inline-block; background-color: #ff5722; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 15px;">Login to Dashboard</a>
           </div>
         </div>
       `,
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.response);
-    return NextResponse.json({ success: true });
+    console.log('Email sent successfully response:', info.response);
+    return NextResponse.json({ success: true, response: info.response });
   } catch (error: any) {
-    console.error('Detailed Email sending error:', error);
+    console.error('Nodemailer Critical Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
