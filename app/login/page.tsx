@@ -63,15 +63,13 @@ export default function LoginPage() {
         const officialEmail = email.trim().toLowerCase();
         const personalRecoveryEmail = recoveryEmail.trim().toLowerCase();
 
-        // INDUSTRY STANDARD TRICK:
-        // To send verification strictly to the personal recovery email, 
-        // we register with recoveryEmail as primary, and store the official email in metadata.
+        // Registering with official email as primary so dashboard shows it correctly,
+        // while storing recovery email in metadata for tracking & verification routing.
         const { data, error } = await supabase.auth.signUp({
-          email: personalRecoveryEmail,
+          email: officialEmail,
           password,
           options: {
             data: {
-              official_email: officialEmail,
               recovery_email: personalRecoveryEmail,
             },
           },
@@ -82,7 +80,7 @@ export default function LoginPage() {
         if (data?.session) {
           window.location.href = '/';
         } else {
-          alert('Account created! A verification link has been sent to your recovery email.');
+          alert('Account created! Please check your email for verification.');
           setIsSignUp(false);
           setEmail('');
           setPassword('');
@@ -259,7 +257,7 @@ export default function LoginPage() {
               {isSignUp && (
                 <div>
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                    RECOVERY EMAIL (VERIFICATION WILL BE SENT HERE) *
+                    RECOVERY EMAIL *
                   </label>
                   <input
                     type="email"
