@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { 
   CheckCircle2, 
   Clock, 
+  FileSpreadsheet,
   XCircle, 
   Send, 
   ShieldCheck, 
@@ -1598,7 +1599,7 @@ export default function PortalComponent() {
             </div>
 
 {/* ADVANCED REPORTING & EXPORT MODULE FOR MANAGEMENT */}
-        <ReportingSection submissions={submissions} />
+        <ReportingSection submissions={logs} />
 
             {/* TEAM DIRECTORY & EMPLOYEE MANAGEMENT WINDOW */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
