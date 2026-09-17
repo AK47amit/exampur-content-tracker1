@@ -670,6 +670,28 @@ export default function PortalComponent() {
       alert("Failed to assign task: " + error.message);
     } else {
       alert("Task assigned successfully to the employee!");
+      // Email notification dispatch block
+        try {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', assigneeId)
+            .single();
+
+          if (profileData && profileData.email) {
+            await fetch('/api/send-mail', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: profileData.email,
+                subject: 'New Operational Task Assigned - Exampur Portal',
+                message: `Hello ${profileData.full_name || 'Employee'},\n\nA new operational task has been assigned to you:\n\nTopic: ${assignTopic}\nCategory: ${taskCategory}\nTarget Quantity: ${assignQty}\n\nPlease check your dashboard and complete it on time.\n\nRegards,\nExampur Management`
+              })
+            });
+          }
+        } catch (emailErr) {
+          console.error("Email notification error:", emailErr);
+        }
       setAssignSubject("");
       setAssignTopic("");
       setAssignQty("");
