@@ -46,7 +46,7 @@ export default function LoginPage() {
     }
   };
 
-  // 2. Email & Password Auth Handler with Custom Nodemailer & Secure Sign-Out Integration
+  // 2. Email & Password Auth Handler with Robust Custom Nodemailer Dispatch & Safe Sign-Out
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -85,7 +85,7 @@ export default function LoginPage() {
         // 2. Force sign out immediately to prevent unauthorized auto-login bypass
         await supabase.auth.signOut();
 
-        // 3. Trigger Custom Nodemailer API to dispatch verification/welcome strictly to recovery email
+        // 3. Explicitly trigger Custom Nodemailer API to dispatch verification to recovery email
         try {
           const mailRes = await fetch('/api/send-mail', {
             method: 'POST',
@@ -96,11 +96,16 @@ export default function LoginPage() {
             }),
           });
 
+          const mailResultData = await mailRes.json();
           if (!mailRes.ok) {
-            console.error('Failed to dispatch recovery notification email via API route.');
+            console.error('Nodemailer API error response:', mailResultData);
+            alert('Account created, but failed to dispatch email: ' + (mailResultData.error || 'Unknown error'));
+          } else {
+            console.log('Nodemailer dispatched successfully:', mailResultData);
           }
-        } catch (mailErr) {
+        } catch (mailErr: any) {
           console.error('Mail dispatch network error:', mailErr);
+          alert('Network error while triggering recovery email: ' + mailErr.message);
         }
 
         alert('Account created successfully! Verification details have been sent to your recovery email inbox.');
