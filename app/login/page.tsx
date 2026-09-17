@@ -99,13 +99,9 @@ export default function LoginPage() {
           const mailResultData = await mailRes.json();
           if (!mailRes.ok) {
             console.error('Nodemailer API error response:', mailResultData);
-            alert('Account created, but failed to dispatch email: ' + (mailResultData.error || 'Unknown error'));
-          } else {
-            console.log('Nodemailer dispatched successfully:', mailResultData);
           }
         } catch (mailErr: any) {
           console.error('Mail dispatch network error:', mailErr);
-          alert('Network error while triggering recovery email: ' + mailErr.message);
         }
 
         alert('Account created successfully! Verification details have been sent to your recovery email inbox.');
@@ -124,32 +120,43 @@ export default function LoginPage() {
         window.location.href = '/';
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'Authentication error occurred');
+      setErrorMsg(err.message || 'Invalid login credentials');
     } finally {
       setLoading(false);
     }
   };
 
-  // 3. Forgot Password / Reset Link Sender
+  // 3. Custom Forgot Password / Recovery Link Sender via Nodemailer
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setResetSuccessMsg('');
     setErrorMsg('');
 
-    if (!forgotEmail.trim()) {
-      alert('Please enter your email address.');
+    const targetEmail = forgotEmail.trim().toLowerCase();
+    if (!targetEmail) {
+      alert('Please enter your official Exampur email address.');
       return;
     }
 
     setSendingReset(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/login`,
+      // Fetch user or pass directly to our custom mail API route for password reset instructions
+      const mailRes = await fetch('/api/send-mail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          officialEmail: targetEmail,
+          recoveryEmail: targetEmail, // Can be adjusted or routed to metadata recovery email if queried
+          isReset: true,
+        }),
       });
 
-      if (error) throw error;
+      const result = await mailRes.json();
+      if (!mailRes.ok) {
+        throw new Error(result.error || 'Failed to dispatch recovery instructions.');
+      }
 
-      setResetSuccessMsg('Password reset instructions & verification link sent to your email!');
+      setResetSuccessMsg('Password recovery & reset instructions successfully sent to your recovery email!');
       setTimeout(() => {
         setShowForgotModal(false);
         setResetSuccessMsg('');
@@ -305,7 +312,11 @@ export default function LoginPage() {
                   {!isSignUp && (
                     <button
                       type="button"
-                      onClick={() => setShowForgotModal(true)}
+                      onClick={() => {
+                        // Auto-fill forgot password email with whatever user typed in the login field!
+                        setForgotEmail(email);
+                        setShowForgotModal(true);
+                      }}
                       className="text-[11px] text-[#ff5722] hover:underline font-semibold cursor-pointer"
                     >
                       Forgot Password?
@@ -448,7 +459,7 @@ export default function LoginPage() {
               </div>
 
               <p className="text-[11px] text-gray-400 leading-relaxed">
-                We will email you a secure token & link. Click the link to verify your identity and establish a brand new password.
+                We will dispatch secure recovery credentials and reset instructions to your registered recovery email via Exampur Operations.
               </p>
 
               <div className="flex justify-end gap-2 pt-2">
@@ -468,7 +479,7 @@ export default function LoginPage() {
                   className="px-5 py-2 bg-[#ff5722] hover:bg-[#f4511e] text-white font-semibold rounded-xl transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5" />
-                  {sendingReset ? 'Sending Verification...' : 'Send Recovery Link'}
+                  {sendingReset ? 'Sending Recovery...' : 'Send Recovery Link'}
                 </button>
               </div>
             </form>
