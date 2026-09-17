@@ -1683,11 +1683,11 @@ export default function PortalComponent() {
                                 type="button"
                                 onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
                                 disabled={p.id === currentUser?.id}
-                                className="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-600 disabled:opacity-30 text-rose-300 hover:text-white border border-rose-800/80 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 bg-amber-950/70 hover:bg-amber-600 disabled:opacity-30 text-amber-300 hover:text-white border border-amber-800 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
                                 title="Deactivate Employee Account"
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                Delete Account
+                                <XCircle className="w-3.5 h-3.5" />
+                                Deactivate
                               </button>
                             )}
                           </td>
