@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [activeTab, setActiveTab] = useState<'employee-login' | 'employee-signup' | 'admin'>('employee-login');
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -22,7 +23,7 @@ export default function LoginPage() {
       const officialEmail = email.trim().toLowerCase();
       const personalRecoveryEmail = recoveryEmail.trim().toLowerCase();
 
-      if (isSignUp) {
+      if (activeTab === 'employee-signup') {
         if (!personalRecoveryEmail) {
           throw new Error('Recovery email is required for employee registration.');
         }
@@ -40,12 +41,12 @@ export default function LoginPage() {
 
         if (error) throw error;
 
-        // 2. Force sign out so user cannot bypass and auto-login without checking recovery email
+        // 2. Force sign out so user cannot auto-login without verifying recovery email
         await supabase.auth.signOut();
 
         // 3. Trigger Custom Nodemailer API to send email strictly to Recovery Email
         try {
-          const mailRes = await fetch('/api/send-mail', {
+          await fetch('/api/send-mail', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -53,21 +54,17 @@ export default function LoginPage() {
               recoveryEmail: personalRecoveryEmail,
             }),
           });
-
-          if (!mailRes.ok) {
-            console.error('Failed to dispatch recovery notification email.');
-          }
         } catch (mailErr) {
           console.error('Mail dispatch network error:', mailErr);
         }
 
         alert('Account created successfully! Verification details have been sent to your recovery email. Please check your recovery inbox.');
-        setIsSignUp(false);
+        setActiveTab('employee-login');
         setEmail('');
         setPassword('');
         setRecoveryEmail('');
       } else {
-        // Sign In Flow
+        // Sign In Flow (For both Employee and Admin)
         const { data, error } = await supabase.auth.signInWithPassword({
           email: officialEmail,
           password,
@@ -89,14 +86,41 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
       <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-8 max-w-md w-full shadow-2xl">
-        <h2 className="text-2xl font-bold text-white mb-2 text-center">
-          {isSignUp ? 'Employee Registration' : 'Exampur Employee Login'}
-        </h2>
-        <p className="text-sm text-[#8b949e] mb-6 text-center">
-          {isSignUp
-            ? 'Register using your official Exampur ID'
-            : 'Sign in with your official credentials'}
-        </p>
+        
+        {/* Top Header & Tabs matching original UI */}
+        <div className="text-center mb-6">
+          <span className="text-xs bg-[#ff5722]/10 text-[#ff5722] font-semibold px-2.5 py-1 rounded-full uppercase tracking-wider">
+            EXAMPUR Content Operations
+          </span>
+          <h2 className="text-2xl font-bold text-white mt-3">
+            {activeTab === 'admin' ? 'Manager (Admin) Login' : activeTab === 'employee-signup' ? 'Employee Registration' : 'Employee Login'}
+          </h2>
+          <p className="text-sm text-[#8b949e] mt-1">
+            {activeTab === 'admin' 
+              ? 'Sign in with administrator credentials' 
+              : activeTab === 'employee-signup' 
+              ? 'Register using your official Exampur ID' 
+              : 'Sign in with your official Exampur account or email'}
+          </p>
+        </div>
+
+        {/* Tab Switcher */}
+        <div className="flex bg-[#0d1117] p-1 rounded-lg border border-[#30363d] mb-6">
+          <button
+            type="button"
+            onClick={() => { setActiveTab('employee-login'); setErrorMsg(''); }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-md transition ${activeTab === 'employee-login' ? 'bg-[#ff5722] text-white shadow' : 'text-[#8b949e] hover:text-white'}`}
+          >
+            Employee Login
+          </button>
+          <button
+            type="button"
+            onClick={() => { setActiveTab('admin'); setErrorMsg(''); }}
+            className={`flex-1 py-2 text-xs font-semibold rounded-md transition ${activeTab === 'admin' ? 'bg-[#ff5722] text-white shadow' : 'text-[#8b949e] hover:text-white'}`}
+          >
+            Manager (Admin)
+          </button>
+        </div>
 
         {errorMsg && (
           <div className="bg-red-950/50 border border-red-800 text-red-300 p-3 rounded-lg text-sm mb-4">
@@ -107,19 +131,19 @@ export default function LoginPage() {
         <form onSubmit={handleAuth} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1">
-              Official Exampur ID
+              {activeTab === 'admin' ? 'Admin Email' : 'Official Exampur ID'}
             </label>
             <input
               type="email"
               required
-              placeholder="name@exampur.com"
+              placeholder={activeTab === 'admin' ? 'admin@exampur.com' : 'name@exampur.com'}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-[#0d1117] border border-[#30363d] rounded-lg px-4 py-2.5 text-white placeholder-[#484f58] focus:outline-none focus:border-[#58a6ff]"
             />
           </div>
 
-          {isSignUp && (
+          {activeTab === 'employee-signup' && (
             <div>
               <label className="block text-xs font-semibold text-[#8b949e] uppercase mb-1">
                 Personal Recovery Email
@@ -154,22 +178,25 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full bg-[#ff5722] hover:bg-[#f4511e] text-white font-bold py-2.5 rounded-lg transition duration-200 shadow-md disabled:opacity-50"
           >
-            {loading ? 'Processing...' : isSignUp ? 'Register Employee' : 'Sign In'}
+            {loading ? 'Processing...' : activeTab === 'employee-signup' ? 'Register Employee' : 'Sign In'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSignUp(!isSignUp);
-              setErrorMsg('');
-            }}
-            className="text-sm text-[#58a6ff] hover:underline"
-          >
-            {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Register"}
-          </button>
-        </div>
+        {/* Bottom Toggle for Sign Up / Sign In */}
+        {activeTab !== 'admin' && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab(activeTab === 'employee-signup' ? 'employee-login' : 'employee-signup');
+                setErrorMsg('');
+              }}
+              className="text-sm text-[#58a6ff] hover:underline"
+            >
+              {activeTab === 'employee-signup' ? 'Already have an account? Sign In' : "Don't have an account? Register"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
