@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [role, setRole] = useState<'employee' | 'manager'>('employee');
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
+  const [recoveryEmail, setRecoveryEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -53,9 +54,20 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
+        if (!recoveryEmail.trim()) {
+          setErrorMsg('Recovery email is mandatory for sign up.');
+          setLoading(false);
+          return;
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password,
+          options: {
+            data: {
+              recovery_email: recoveryEmail.trim().toLowerCase(),
+            },
+          },
         });
 
         if (error) throw error;
@@ -66,6 +78,7 @@ export default function LoginPage() {
           alert('Account created! Please sign in with your credentials.');
           setIsSignUp(false);
           setPassword('');
+          setRecoveryEmail('');
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -223,7 +236,7 @@ export default function LoginPage() {
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                  EMAIL ADDRESS
+                  EMAIL ADDRESS *
                 </label>
                 <input
                   type="email"
@@ -235,10 +248,26 @@ export default function LoginPage() {
                 />
               </div>
 
+              {isSignUp && (
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">
+                    RECOVERY EMAIL *
+                  </label>
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    required
+                    placeholder="personal@gmail.com"
+                    className="w-full bg-[#0d1117] border border-gray-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#ff5722] transition"
+                  />
+                </div>
+              )}
+
               <div>
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="block text-[11px] font-bold text-gray-400 uppercase tracking-wider">
-                    PASSWORD
+                    PASSWORD *
                   </label>
                   {!isSignUp && (
                     <button
