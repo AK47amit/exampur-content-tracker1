@@ -1597,6 +1597,9 @@ export default function PortalComponent() {
               </div>
             </div>
 
+{/* ADVANCED REPORTING & EXPORT MODULE FOR MANAGEMENT */}
+        <ReportingSection submissions={submissions} />
+
             {/* TEAM DIRECTORY & EMPLOYEE MANAGEMENT WINDOW */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
               <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3">
@@ -2246,5 +2249,159 @@ export default function PortalComponent() {
 
       </div>
     </main>
+  );
+}
+// Advanced Reporting Component for Excel/CSV Sheet Exports (Daily, Monthly & Custom Date Range)
+function ReportingSection({ submissions }: { submissions: any[] }) {
+  const [reportType, setReportType] = useState<'daily' | 'monthly' | 'custom'>('daily');
+  const [singleDate, setSingleDate] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+
+  const downloadCSV = (dataToExport: any[], filename: string) => {
+    if (dataToExport.length === 0) {
+      alert('No records found for the selected reporting criteria.');
+      return;
+    }
+
+    const headers = ['Date', 'Employee Name', 'Workspace Email', 'Topic / Subject', 'Category', 'Quantity', 'Status'];
+    const rows = dataToExport.map(item => [
+      item.date || '',
+      `"${item.employeeName || ''}"`,
+      item.employeeEmail || '',
+      `"${item.topic || ''}"`,
+      `"${item.category || ''}"`,
+      item.quantity || 0,
+      item.status || ''
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleGenerateReport = () => {
+    let filtered = [...submissions];
+
+    if (reportType === 'daily') {
+      if (!singleDate) {
+        alert('Please select a target date for the daily report.');
+        return;
+      }
+      filtered = filtered.filter(item => item.date === singleDate);
+      downloadCSV(filtered, `Daily_Report_${singleDate}`);
+    } 
+    else if (reportType === 'monthly') {
+      if (!selectedMonth) {
+        alert('Please select a target month (YYYY-MM).');
+        return;
+      }
+      filtered = filtered.filter(item => item.date && item.date.startsWith(selectedMonth));
+      downloadCSV(filtered, `Monthly_Report_${selectedMonth}`);
+    } 
+    else if (reportType === 'custom') {
+      if (!fromDate || !toDate) {
+        alert('Please select both From and To dates.');
+        return;
+      }
+      filtered = filtered.filter(item => item.date >= fromDate && item.date <= toDate);
+      downloadCSV(filtered, `Custom_Range_Report_${fromDate}_to_${toDate}`);
+    }
+  };
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-xl">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-orange-500/20 text-orange-500 rounded-lg">
+          <FileSpreadsheet className="w-5 h-5" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white">Advanced Operations Reporting (Daily, Monthly & Custom Sheets)</h3>
+          <p className="text-xs text-slate-400">Generate and download official CSV sheets for management review.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div>
+          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+            Report Type
+          </label>
+          <select
+            value={reportType}
+            onChange={(e) => setReportType(e.target.value as any)}
+            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+          >
+            <option value="daily">Daily Report</option>
+            <option value="monthly">Monthly Report</option>
+            <option value="custom">Custom From-To Date</option>
+          </select>
+        </div>
+
+        {reportType === 'daily' && (
+          <div className="md:col-span-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Select Date *</label>
+            <input
+              type="date"
+              value={singleDate}
+              onChange={(e) => setSingleDate(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+            />
+          </div>
+        )}
+
+        {reportType === 'monthly' && (
+          <div className="md:col-span-2">
+            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Select Month *</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+            />
+          </div>
+        )}
+
+        {reportType === 'custom' && (
+          <div className="md:col-span-2 grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">From Date *</label>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">To Date *</label>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+              />
+            </div>
+          </div>
+        )}
+
+        <div>
+          <button
+            type="button"
+            onClick={handleGenerateReport}
+            className="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs py-2.5 px-3 rounded-lg transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5" /> Download Sheet
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
