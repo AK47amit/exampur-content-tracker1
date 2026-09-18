@@ -37,7 +37,8 @@ import {
   Edit3,
   Search,
   Users,
-  UserCheck2
+  UserCheck2,
+  Menu, 
 } from "lucide-react";
 
 // Helper function: Converts "vishal.sharma@exampur.com" to "Vishal Sharma" cleanly
@@ -1019,17 +1020,18 @@ export default function PortalComponent() {
       </div>
 
       {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full bg-[#FDFBF7]">
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 w-full">
         
         {/* Persistent Sidebar Toggle Button */}
         <div className="mb-6 flex items-center">
-          <button 
-            type="button"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="px-3.5 py-2 rounded-lg bg-white border border-[#E6E2D6] text-slate-800 hover:bg-[#F7F4EB] text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
-          >
-            <span className="text-base">☰</span> Toggle Sidebar Panel
-          </button>
+         <button
+  type="button"
+  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+  className="flex items-center gap-2 bg-white hover:bg-[#F7F4EB] text-slate-800 border border-[#E6E2D6] px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
+>
+  <Menu className="w-4 h-4 text-orange-600" />
+  <span>Menu</span>
+</button>
         </div>
 
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
