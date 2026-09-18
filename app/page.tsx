@@ -939,10 +939,10 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-{/* Clean Pure Exampur Logo */}
+{/* Local Exampur Logo Integration */}
 <div className="flex items-center mb-6 p-2">
   <img 
-    src="https://images.jdmagicbox.com/comp/delhi/y3/011pxx11.xx11.220330155255.g2y3/catalogue/exampur-main-office-delhi-corporate-companies-338m61t64m.jpg" 
+    src="/exampur-logo.png" 
     alt="Exampur Logo" 
     className="h-10 w-auto object-contain rounded-lg shadow-sm"
   />
