@@ -977,13 +977,17 @@ export default function PortalComponent() {
       onClick={() => { setAdminView('delegated'); setIsSidebarOpen(false); }} 
       className={`w-full text-left px-3 py-2 rounded-lg transition ${adminView === 'delegated' ? 'bg-orange-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
     >
+    
+
       Delegated Tasks
     </button>
     <button 
       onClick={() => { setAdminView('reports'); setIsSidebarOpen(false); }} 
       className={`w-full text-left px-3 py-2 rounded-lg transition ${adminView === 'reports' ? 'bg-orange-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
     >
+     
       Reports
+
     </button>
     <button 
       onClick={() => { setAdminView('team'); setIsSidebarOpen(false); }} 
@@ -995,8 +999,16 @@ export default function PortalComponent() {
       onClick={() => { setAdminView('timesheet'); setIsSidebarOpen(false); }} 
       className={`w-full text-left px-3 py-2 rounded-lg transition ${adminView === 'timesheet' ? 'bg-orange-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
     >
+      
       Timesheet
     </button>
+    <button
+  type="button"
+  onClick={() => setAdminView('reset-requests')}
+  className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium transition flex items-center gap-2.5 cursor-pointer ${adminView === 'reset-requests' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
+>
+  <KeyRound className="w-4 h-4" /> Reset Requests
+</button>
             </>
           ) : (
             <>
@@ -1013,14 +1025,8 @@ export default function PortalComponent() {
                 onClick={() => { setCurrentView('submissions'); setIsSidebarOpen(false); }} 
                 className={`block px-3 py-2 rounded-lg transition ${currentView === 'submissions' ? 'bg-red-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
               >
-                reset request
-                <button
-  type="button"
-  onClick={() => setAdminView('reset-requests')}
-  className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium transition flex items-center gap-2.5 cursor-pointer ${adminView === 'reset-requests' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
->
-  <KeyRound className="w-4 h-4" /> Reset Requests
-</button>
+                 
+               
                 My Recent Submissions & Done Work
               </a>
             </>
