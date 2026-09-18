@@ -939,33 +939,35 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-{/* Exampur Logo & Branding Header */}
-<div className="flex items-center gap-3 mb-6 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
-  <div className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">EX</div>
-  <div>
-    <h1 className="font-bold text-base leading-tight text-white">Exampur</h1>
-    <p className="text-xs text-slate-400">Ops Portal & Content Tracker</p>
-  </div>
-</div>
-
-{/* Exampur Logo & Theme Toggle Header (Serial No. 2 & 3) */}
-<div className="flex justify-between items-center mb-6 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+{/* Clean & Compact Exampur Logo with Working Sun/Moon Toggle */}
+<div className="flex justify-between items-center mb-6 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm transition-colors">
+  
+  {/* Left: Compact Real Exampur Logo & Title */}
   <div className="flex items-center gap-3">
-    <div className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">EX</div>
+    <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center">
+      <img 
+        src="https://appsquadz.com/assets/exampur%20logo-BGIPYXIV.svg" 
+        alt="Exampur Logo" 
+        className="h-6 w-6 object-contain"
+      />
+    </div>
     <div>
-      <h1 className="font-bold text-base leading-tight text-white">Exampur</h1>
-      <p className="text-xs text-slate-400">Ops Portal & Content Tracker</p>
+      <h1 className="font-extrabold text-sm leading-tight text-slate-900 dark:text-white tracking-wide">Exampur</h1>
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Ops Portal & Content Tracker</p>
     </div>
   </div>
 
-  {/* Light/Dark Theme Toggle Button */}
+  {/* Right: Working Sun/Moon Theme Toggle Button */}
   <button 
     onClick={() => {
-      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
     }}
-    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition shadow-sm"
+    className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl border border-slate-200 dark:border-slate-700 transition shadow-sm"
   >
-    🌓 Toggle Theme
+    <span className="text-sm dark:hidden">🌙</span>
+    <span className="text-sm hidden dark:inline">☀️</span>
+    <span>{document.documentElement.classList.contains('dark') ? 'Light Mode' : 'Dark Mode'}</span>
   </button>
 </div>
 
