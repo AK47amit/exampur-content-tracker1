@@ -945,7 +945,7 @@ export default function PortalComponent() {
     <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'} flex relative w-full transition-colors duration-300`}>
       
       {/* Left Sliding Panel / Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xl'} border-r transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-800 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <button 
@@ -1001,14 +1001,15 @@ export default function PortalComponent() {
       </div>
 
       {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10">
+     <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full">
         
         {/* Universal Sidebar Slider / Hamburger Toggle Bar */}
         <div className="mb-6 flex items-center">
           <button 
+          type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer shadow-md"
-          >
+           className={`px-3.5 py-2 rounded-lg ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 shadow-sm'} border text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-md`}
+>
             <span className="text-base">☰</span> Toggle Sidebar Panel
           </button>
         </div>
