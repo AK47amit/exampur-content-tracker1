@@ -1020,7 +1020,7 @@ export default function PortalComponent() {
       </div>
 
       {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 transition-all duration-300 w-full">
+      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full bg-[#FDFBF7]">
         
         {/* Persistent Sidebar Toggle Button */}
         <div className="mb-6 flex items-center">
@@ -1103,39 +1103,29 @@ export default function PortalComponent() {
 
       <div className="max-w-7xl mx-auto space-y-8 w-full">
         
-        {/* Header with Clean Display Name & Menu Toggle */}
-<div className="bg-white border border-[#E6E2D6] px-6 md:px-10 py-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 rounded-xl shadow-sm mb-6">
-  <div className="flex items-center gap-4">
-    <button
-      type="button"
-      onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-      className="flex items-center gap-2 bg-white hover:bg-[#F7F4EB] text-slate-800 border border-[#E6E2D6] px-3.5 py-2 rounded-xl text-xs font-semibold shadow-sm transition cursor-pointer"
-    >
-      <Menu className="w-4 h-4 text-orange-600" />
-      <span>Menu</span>
-    </button>
-    
-    <div>
-      <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2 flex-wrap">
-        <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-mono">EXAMPUR</span>
-        Content Operations & Work Audit Portal
-      </h1>
-      <p className="text-xs text-slate-600 mt-1">Real-time Daily Performance Matrix, Delegation & Verification</p>
-    </div>
-  </div>
+        {/* Header with Clean Display Name */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#E6E2D6] pb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-mono">EXAMPUR</span>
+              Content Operations & Work Audit Portal
+            </h1>
+            <p className="text-slate-600 text-sm mt-1">Real-time Daily Performance Matrix, Delegation & Verification</p>
+          </div>
 
-  <div className="flex items-center gap-4">
-    <div className="text-left md:text-right">
-      <p className="text-sm text-slate-900 font-bold tracking-wide">{formatUserDisplay(currentUser?.email)}</p>
-      <p className="text-[11px] text-slate-600 font-mono">{currentUser?.email}</p>
-      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
-        userRole === "admin" ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-blue-100 text-blue-700 border-blue-300"
-      }`}>
-        {userRole === "admin" ? "Manager (Admin)" : "Employee"}
-      </span>
-    </div>
-  </div>
-</div>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="text-right">
+              <p className="text-sm text-slate-900 font-bold tracking-wide">
+                {formatUserDisplay(currentUser?.email)}
+              </p>
+              <p className="text-[11px] text-slate-600 font-mono">{currentUser?.email}</p>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
+                userRole === "admin" ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-blue-100 text-blue-700 border-blue-300"
+              }`}>
+                {userRole === "admin" ? "Manager (Admin)" : "Employee"}
+              </span>
+            </div>
+
             <button
               type="button"
               onClick={handleLogout}
@@ -2381,7 +2371,10 @@ export default function PortalComponent() {
         )}
 
       </div>
-    )}
+    </div>
+    </div>
+  );
+}
 
 // Advanced Reporting Component for Excel/CSV Sheet Exports (Daily, Monthly & Custom Date Range)
 function ReportingSection({ submissions }: { submissions: any[] }) {
