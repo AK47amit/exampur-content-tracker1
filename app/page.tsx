@@ -939,13 +939,6 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-{/* 100% Reliable Exampur Header Branding */}
-<div className="flex items-center gap-3 mb-6 p-2">
-  <div className="bg-gradient-to-r from-red-600 to-red-700 text-white font-black px-3.5 py-2 rounded-xl text-sm shadow-lg tracking-wider border border-red-500/30 flex items-center gap-1.5">
-    <span className="text-xs bg-black/20 px-1.5 py-0.5 rounded">EX</span>
-    <span>EXAMPUR</span>
-  </div>
-</div>
 
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
       {userRole !== "admin" && flashAlert && flashAlert.show && (
