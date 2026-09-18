@@ -948,6 +948,27 @@ export default function PortalComponent() {
   </div>
 </div>
 
+{/* Exampur Logo & Theme Toggle Header (Serial No. 2 & 3) */}
+<div className="flex justify-between items-center mb-6 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+  <div className="flex items-center gap-3">
+    <div className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">EX</div>
+    <div>
+      <h1 className="font-bold text-base leading-tight text-white">Exampur</h1>
+      <p className="text-xs text-slate-400">Ops Portal & Content Tracker</p>
+    </div>
+  </div>
+
+  {/* Light/Dark Theme Toggle Button */}
+  <button 
+    onClick={() => {
+      document.documentElement.classList.toggle('dark');
+    }}
+    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition shadow-sm"
+  >
+    🌓 Toggle Theme
+  </button>
+</div>
+
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
       {userRole !== "admin" && flashAlert && flashAlert.show && (
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
