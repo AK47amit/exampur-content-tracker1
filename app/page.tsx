@@ -38,6 +38,7 @@ import {
   Search,
   Users,
   UserCheck2,
+  KeyRound,
   Menu, 
 } from "lucide-react";
 
@@ -121,7 +122,7 @@ export default function PortalComponent() {
   const [assigning, setAssigning] = useState(false);
 
   // Admin Navigation Tabs State (Dashboard cleanup & sidebar integration)
-  const [adminView, setAdminView] = useState<'queue' | 'delegated' | 'reports' | 'team' | 'timesheet'>('queue');
+  const [adminView, setAdminView] = useState<'queue' | 'delegated' | 'reports' | 'team' | 'timesheet' | 'reset-requests'>('queue');
 
   // Profile Map Ref for Realtime Callback Sync
   const profilesRef = useRef<any[]>([]);
@@ -1012,6 +1013,14 @@ export default function PortalComponent() {
                 onClick={() => { setCurrentView('submissions'); setIsSidebarOpen(false); }} 
                 className={`block px-3 py-2 rounded-lg transition ${currentView === 'submissions' ? 'bg-red-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
               >
+                reset request
+                <button
+  type="button"
+  onClick={() => setAdminView('reset-requests')}
+  className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium transition flex items-center gap-2.5 cursor-pointer ${adminView === 'reset-requests' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
+>
+  <KeyRound className="w-4 h-4" /> Reset Requests
+</button>
                 My Recent Submissions & Done Work
               </a>
             </>
@@ -2004,6 +2013,70 @@ export default function PortalComponent() {
         </div>
       </div>
     )}
+
+    {/* TAB: PASSWORD RESET REQUESTS (Admin View) */}
+{adminView === 'reset-requests' && (
+  <div className="space-y-6">
+    <div className="bg-white border border-[#E6E2D6] rounded-2xl p-6 shadow-xs">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+          <h3 className="text-base font-bold text-slate-900 tracking-tight">Password Reset Requests</h3>
+          <p className="text-xs text-slate-500 mt-0.5">Manage and review employee password recovery requests sent to admin.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => alert('Refreshing requests list...')}
+            className="px-3.5 py-2 rounded-xl bg-[#F7F4EB] hover:bg-[#EEEBDE] text-slate-700 text-xs font-semibold transition cursor-pointer"
+          >
+            Refresh List
+          </button>
+        </div>
+      </div>
+
+      {/* Requests Table */}
+      <div className="overflow-x-auto border border-[#E6E2D6] rounded-xl">
+        <table className="w-full text-left border-collapse text-xs">
+          <thead>
+            <tr className="bg-[#FDFBF7] border-b border-[#E6E2D6] text-slate-600 font-semibold uppercase tracking-wider">
+              <th className="p-3.5">Employee Email</th>
+              <th className="p-3.5">Request Timestamp</th>
+              <th className="p-3.5">Status</th>
+              <th className="p-3.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E6E2D6] text-slate-800">
+            <tr>
+              <td className="p-3.5 font-mono font-medium text-slate-900">employee1@exampur.com</td>
+              <td className="p-3.5 text-slate-500">19-09-2026 01:25 AM</td>
+              <td className="p-3.5">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-300">
+                  PENDING
+                </span>
+              </td>
+              <td className="p-3.5 text-right space-x-2">
+                <button
+                  type="button"
+                  onClick={() => alert('Password reset link generated & dispatched to employee.')}
+                  className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition cursor-pointer"
+                >
+                  Approve & Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={() => alert('Request dismissed.')}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+)}
            
 {/* TAB 5: TIMESHEET */}
     {adminView === 'timesheet' && (
