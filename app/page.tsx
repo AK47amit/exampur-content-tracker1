@@ -938,6 +938,7 @@ export default function PortalComponent() {
   }
 
   return (
+ 
     <div className="min-h-screen bg-slate-950 text-slate-100 flex relative w-full">
       
       {/* Left Sliding Panel / Sidebar */}
@@ -948,10 +949,21 @@ export default function PortalComponent() {
         </div>
         
         <nav className="p-4 space-y-2 text-sm">
-          <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
-          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Content Tracker</a>
-          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Task Delegation</a>
-          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Performance Matrix</a>
+          {userRole === "admin" ? (
+            <>
+              {/* Admin / Manager Sidebar Links */}
+              <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Content Tracker</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Task Delegation</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Performance Matrix</a>
+            </>
+          ) : (
+            <>
+              {/* Employee Sidebar Links */}
+              <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
+              <a href="#my-submissions-section" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">My Recent Submissions & Done Work</a>
+            </>
+          )}
         </nav>
       </div>
 
@@ -1292,8 +1304,8 @@ export default function PortalComponent() {
               </form>
             </div>
 
-            {/* Employee's Own Logs with Preview & Correction Action */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
+            {/* Employee's Own Logs with Preview & Correction Action (ID added for Sidebar Link) */}
+            <div id="my-submissions-section" className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl scroll-mt-6">
               <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
                   <History className="w-4 h-4 text-orange-500" /> My Recent Submissions & Done Work
@@ -2438,4 +2450,3 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
     </div>
   );
 }
-  
