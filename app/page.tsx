@@ -941,16 +941,15 @@ export default function PortalComponent() {
 
   return (
  
-   
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex relative w-full transition-colors duration-300">
+    <div className="min-h-screen bg-[#FDFBF7] text-slate-900 flex relative w-full transition-colors duration-300">
       
       {/* Left Sliding Panel / Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-5 border-b border-slate-200 flex justify-between items-center">
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-[#E6E2D6] shadow-xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-5 border-b border-[#E6E2D6] flex justify-between items-center bg-[#F7F4EB]">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(false)} 
-              className="md:hidden text-slate-500 hover:text-slate-900 p-1 rounded-lg bg-slate-100 cursor-pointer"
+              className="md:hidden text-slate-600 hover:text-slate-900 p-1 rounded-lg bg-slate-200 cursor-pointer"
               title="Close Sidebar"
             >
               ✕
@@ -958,17 +957,15 @@ export default function PortalComponent() {
             <span className="font-extrabold text-base tracking-wide text-slate-900">Exampur Ops</span>
           </div>
         </div>
-          
         
-        
-        <nav className="p-4 space-y-2 text-sm">
+        <nav className="p-4 space-y-2 text-sm bg-white">
           {userRole === "admin" ? (
             <>
               {/* Admin / Manager Sidebar Links */}
               <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
-              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Content Tracker</a>
-              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Task Delegation</a>
-              <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Performance Matrix</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-[#F7F4EB] transition">Content Tracker</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-[#F7F4EB] transition">Task Delegation</a>
+              <a href="#" className="block px-3 py-2 rounded-lg text-slate-700 hover:bg-[#F7F4EB] transition">Performance Matrix</a>
             </>
           ) : (
             <>
@@ -976,14 +973,14 @@ export default function PortalComponent() {
               <a 
                 href="#" 
                 onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }} 
-                className={`block px-3 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-red-600 text-white font-medium' : 'text-slate-300 hover:bg-slate-800'}`}
+                className={`block px-3 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-red-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
               >
                 Dashboard
               </a>
               <a 
                 href="#" 
                 onClick={() => { setCurrentView('submissions'); setIsSidebarOpen(false); }} 
-                className={`block px-3 py-2 rounded-lg transition ${currentView === 'submissions' ? 'bg-red-600 text-white font-medium' : 'text-slate-300 hover:bg-slate-800'}`}
+                className={`block px-3 py-2 rounded-lg transition ${currentView === 'submissions' ? 'bg-red-600 text-white font-medium' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
               >
                 My Recent Submissions & Done Work
               </a>
@@ -992,15 +989,15 @@ export default function PortalComponent() {
         </nav>
       </div>
 
-     {/* Main Content Area Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full">
+      {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full bg-[#FDFBF7]">
         
         {/* Persistent Sidebar Toggle Button */}
         <div className="mb-6 flex items-center">
           <button 
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
+            className="px-3.5 py-2 rounded-lg bg-white border border-[#E6E2D6] text-slate-800 hover:bg-[#F7F4EB] text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
           >
             <span className="text-base">☰</span> Toggle Sidebar Panel
           </button>
@@ -1011,21 +1008,21 @@ export default function PortalComponent() {
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
           <div className={`p-4 rounded-xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
             flashAlert?.type === "rejected"
-              ? "bg-rose-950/90 border-rose-700 text-rose-200"
-              : "bg-amber-950/90 border-amber-700 text-amber-200"
+              ? "bg-rose-50 border-rose-300 text-rose-900"
+              : "bg-amber-50 border-amber-300 text-amber-900"
           }`}>
             {flashAlert?.type === "rejected" ? (
-              <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+              <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
             ) : (
-              <BellRing className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
+              <BellRing className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-bounce" />
             )}
             <div className="flex-1 text-xs">
-              <p className="font-bold text-white mb-0.5">{flashAlert?.title}</p>
-              <p className="text-slate-300 leading-relaxed">{flashAlert?.message}</p>
+              <p className="font-bold text-slate-900 mb-0.5">{flashAlert?.title}</p>
+              <p className="text-slate-700 leading-relaxed">{flashAlert?.message}</p>
             </div>
             <button
               onClick={() => setFlashAlert(null)}
-              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800/50 rounded cursor-pointer"
+              className="text-slate-500 hover:text-slate-900 p-1 hover:bg-slate-200/50 rounded cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1036,36 +1033,36 @@ export default function PortalComponent() {
       {/* 2. Real-time Inbound Submission Flash Toast (Strictly for Manager) */}
       {userRole === "admin" && managerToast && managerToast?.show && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in slide-in-from-bottom-5 fade-in duration-300">
-          <div className="p-5 rounded-2xl shadow-2xl border bg-slate-900/95 border-amber-500/80 text-white flex items-start gap-4 backdrop-blur-xl ring-2 ring-amber-500/30">
-            <div className="p-3 bg-amber-950/80 text-amber-400 border border-amber-800/80 rounded-xl shrink-0 mt-0.5">
+          <div className="p-5 rounded-2xl shadow-2xl border bg-white border-amber-400 text-slate-900 flex items-start gap-4 backdrop-blur-xl ring-2 ring-amber-400/20">
+            <div className="p-3 bg-amber-100 text-amber-700 border border-amber-300 rounded-xl shrink-0 mt-0.5">
               <BellRing className="w-6 h-6 animate-bounce" />
             </div>
             <div className="flex-1 text-xs space-y-1">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping inline-block" />
-                <p className="font-bold text-sm text-amber-300 uppercase tracking-wide">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping inline-block" />
+                <p className="font-bold text-sm text-amber-800 uppercase tracking-wide">
                   New Submission For Review!
                 </p>
               </div>
-              <p className="text-white font-semibold text-xs">
+              <p className="text-slate-900 font-semibold text-xs">
                 {formatUserDisplay(managerToast?.employeeEmail)}
               </p>
-              <p className="text-cyan-300 font-mono text-[11px] break-all">
+              <p className="text-cyan-700 font-mono text-[11px] break-all">
                 {managerToast?.employeeEmail}
               </p>
-              <div className="pt-1 text-slate-300 flex items-center gap-2">
-                <span>Status: <b className="text-white">{managerToast?.topic}</b></span>
-                {managerToast?.quantity > 0 && (
+              <div className="pt-1 text-slate-700 flex items-center gap-2">
+                <span>Status: <b className="text-slate-900">{managerToast?.topic}</b></span>
+                {managerToast && managerToast.quantity > 0 && (
                   <>
                     <span>&bull;</span>
-                    <span className="text-orange-400 font-bold">{managerToast?.quantity} Qty</span>
+                    <span className="text-orange-600 font-bold">{managerToast.quantity} Qty</span>
                   </>
                 )}
               </div>
             </div>
             <button
               onClick={() => setManagerToast(null)}
-              className="text-slate-400 hover:text-white p-1 hover:bg-slate-800 rounded-lg cursor-pointer transition"
+              className="text-slate-500 hover:text-slate-900 p-1 hover:bg-slate-100 rounded-lg cursor-pointer transition"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1076,23 +1073,23 @@ export default function PortalComponent() {
       <div className="max-w-7xl mx-auto space-y-8 w-full">
         
         {/* Header with Clean Display Name */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#E6E2D6] pb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-mono">EXAMPUR</span>
               Content Operations & Work Audit Portal
             </h1>
-            <p className="text-slate-400 text-sm mt-1">Real-time Daily Performance Matrix, Delegation & Verification</p>
+            <p className="text-slate-600 text-sm mt-1">Real-time Daily Performance Matrix, Delegation & Verification</p>
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">
             <div className="text-right">
-              <p className="text-sm text-white font-bold tracking-wide">
+              <p className="text-sm text-slate-900 font-bold tracking-wide">
                 {formatUserDisplay(currentUser?.email)}
               </p>
-              <p className="text-[11px] text-slate-400 font-mono">{currentUser?.email}</p>
+              <p className="text-[11px] text-slate-600 font-mono">{currentUser?.email}</p>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase inline-block mt-0.5 ${
-                userRole === "admin" ? "bg-purple-950/70 text-purple-300 border-purple-800" : "bg-blue-950/70 text-blue-300 border-blue-800"
+                userRole === "admin" ? "bg-purple-100 text-purple-700 border-purple-300" : "bg-blue-100 text-blue-700 border-blue-300"
               }`}>
                 {userRole === "admin" ? "Manager (Admin)" : "Employee"}
               </span>
@@ -1101,7 +1098,7 @@ export default function PortalComponent() {
             <button
               type="button"
               onClick={handleLogout}
-              className="px-3 py-1.5 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-700/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               Logout
@@ -1112,13 +1109,13 @@ export default function PortalComponent() {
         {/* Dedicated Workspace Identity Badge */}
         <div className="flex items-center gap-2">
           {userRole === "admin" ? (
-            <div className="inline-flex items-center gap-2 bg-slate-900 border border-purple-800/60 px-4 py-2 rounded-lg text-xs font-semibold text-purple-300">
-              <TableProperties className="w-4 h-4 text-purple-400" />
+            <div className="inline-flex items-center gap-2 bg-white border border-purple-200 px-4 py-2 rounded-lg text-xs font-semibold text-purple-700 shadow-sm">
+              <TableProperties className="w-4 h-4 text-purple-600" />
               Executive Audit & Delegation Console
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 bg-slate-900 border border-orange-800/60 px-4 py-2 rounded-lg text-xs font-semibold text-orange-300">
-              <Send className="w-4 h-4 text-orange-400" />
+            <div className="inline-flex items-center gap-2 bg-white border border-orange-200 px-4 py-2 rounded-lg text-xs font-semibold text-orange-700 shadow-sm">
+              <Send className="w-4 h-4 text-orange-600" />
               Employee Daily Workspace
             </div>
           )}
@@ -1135,58 +1132,58 @@ export default function PortalComponent() {
                 <button
                   type="button"
                   onClick={() => setShowActiveTasksModal(true)}
-                  className="bg-slate-900 hover:bg-slate-800/80 border border-orange-500/50 hover:border-orange-500 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-lg group relative overflow-hidden"
+                  className="bg-white hover:bg-[#F7F4EB] border border-[#E6E2D6] hover:border-orange-400 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-sm group relative overflow-hidden text-slate-900"
                 >
                   <div className="flex justify-between items-start">
-                    <p className="text-xs text-orange-400 font-semibold group-hover:text-orange-300 flex items-center gap-1.5">
+                    <p className="text-xs text-orange-600 font-semibold group-hover:text-orange-700 flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5" /> My Active Tasks (Pending/Assigned)
                     </p>
-                    <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">View List &rarr;</span>
+                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded border border-orange-300">View List &rarr;</span>
                   </div>
-                  <p className="text-2xl font-bold text-orange-400 mt-2">
+                  <p className="text-2xl font-bold text-orange-600 mt-2">
                     {myAssignedTasks.length + myPendingLogs.length}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
+                  <p className="text-[11px] text-slate-500 mt-1">
                     {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Under Review
                   </p>
                 </button>
 
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                  <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
-                  <p className="text-2xl font-bold text-emerald-400 mt-2">
+                <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+                  <p className="text-xs text-emerald-700 font-medium">My Approved Submissions</p>
+                  <p className="text-2xl font-bold text-emerald-700 mt-2">
                     {myPersonalLogs.filter(l => l.status === "approved").length}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">Verified output records</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Verified output records</p>
                 </div>
 
-                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
-                  <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
-                  <p className="text-2xl font-bold text-blue-400 mt-2">
+                <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm col-span-2 sm:col-span-1 text-slate-900">
+                  <p className="text-xs text-blue-700 font-medium">My Total Units Produced</p>
+                  <p className="text-2xl font-bold text-blue-700 mt-2">
                     {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-1">Cumulative verified count</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Cumulative verified count</p>
                 </div>
               </div>
 
               {/* Submission Form */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
-                <div className="border-b border-slate-800 pb-4">
-                  <h2 className="text-lg font-semibold flex items-center gap-2">
-                    <Send className="w-5 h-5 text-orange-500" /> Daily Work Log Submission
+              <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 md:p-8 space-y-6 shadow-sm text-slate-900">
+                <div className="border-b border-[#E6E2D6] pb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-900">
+                    <Send className="w-5 h-5 text-orange-600" /> Daily Work Log Submission
                   </h2>
-                  <p className="text-slate-400 text-xs mt-1">
-                    <span className="text-rose-400 font-semibold">* All fields and proof attachments are strictly mandatory.</span>
+                  <p className="text-slate-500 text-xs mt-1">
+                    <span className="text-rose-600 font-semibold">* All fields and proof attachments are strictly mandatory.</span>
                   </p>
                 </div>
 
                 <form onSubmit={handleWorkSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">Department <span className="text-rose-500">*</span></label>
+                    <label className="text-xs text-slate-700 block mb-2 font-medium">Department <span className="text-rose-600">*</span></label>
                     <select
                       required
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer text-slate-900"
                     >
                       <option value="Publications & Testing">Publications & Testing</option>
                       <option value="DTP">DTP</option>
@@ -1195,12 +1192,12 @@ export default function PortalComponent() {
 
                   {department === "Publications & Testing" && (
                     <div>
-                      <label className="text-xs text-slate-300 block mb-2 font-medium">Task Type <span className="text-rose-500">*</span></label>
+                      <label className="text-xs text-slate-700 block mb-2 font-medium">Task Type <span className="text-rose-600">*</span></label>
                       <select
                         required
                         value={taskCategory}
                         onChange={(e) => setTaskCategory(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                        className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer text-slate-900"
                       >
                         <option value="Question Formation">Question Formation</option>
                         <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
@@ -1214,12 +1211,12 @@ export default function PortalComponent() {
 
                   {department === "Publications & Testing" && taskCategory === "Proofing" && (
                     <div>
-                      <label className="text-xs text-slate-300 block mb-2 font-medium">Proofing Stage <span className="text-rose-500">*</span></label>
+                      <label className="text-xs text-slate-700 block mb-2 font-medium">Proofing Stage <span className="text-rose-600">*</span></label>
                       <select
                         required
                         value={stage}
                         onChange={(e) => setStage(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                        className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer text-slate-900"
                       >
                         <option value="Proof 1">Proof 1</option>
                         <option value="Proof 2">Proof 2</option>
@@ -1230,11 +1227,11 @@ export default function PortalComponent() {
 
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-xs text-slate-300 font-medium">
-                        Subject / Book Name <span className="text-rose-500">*</span>
+                      <label className="text-xs text-slate-700 font-medium">
+                        Subject / Book Name <span className="text-rose-600">*</span>
                       </label>
                       {myRememberedBooks.length > 0 && (
-                        <span className="text-[10px] text-orange-400 font-mono">
+                        <span className="text-[10px] text-orange-600 font-mono">
                           {myRememberedBooks.length} Saved Books
                         </span>
                       )}
@@ -1246,7 +1243,7 @@ export default function PortalComponent() {
                       placeholder="Type or select from your past books..."
                       value={subjectBook}
                       onChange={(e) => setSubjectBook(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none text-slate-900"
                     />
                     <datalist id="remembered-books">
                       {myRememberedBooks.map((book, idx) => (
@@ -1256,19 +1253,19 @@ export default function PortalComponent() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">Topic / Chapter Name <span className="text-rose-500">*</span></label>
+                    <label className="text-xs text-slate-700 block mb-2 font-medium">Topic / Chapter Name <span className="text-rose-600">*</span></label>
                     <input
                       type="text"
                       required
                       placeholder="e.g., Number System Part 1"
                       value={topicName}
                       onChange={(e) => setTopicName(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none text-slate-900"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">Quantity Completed <span className="text-rose-500">*</span></label>
+                    <label className="text-xs text-slate-700 block mb-2 font-medium">Quantity Completed <span className="text-rose-600">*</span></label>
                     <input
                       type="number"
                       min="1"
@@ -1276,13 +1273,13 @@ export default function PortalComponent() {
                       placeholder="e.g., 50"
                       value={quantity}
                       onChange={(e) => setQuantity(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-3 text-sm focus:border-orange-500 outline-none text-slate-900"
                     />
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">
-                      Attach Mandatory Proof (Max 3MB per file, Max 10MB total) <span className="text-rose-500">*</span>
+                    <label className="text-xs text-slate-700 block mb-2 font-medium">
+                      Attach Mandatory Proof (Max 3MB per file, Max 10MB total) <span className="text-rose-600">*</span>
                     </label>
                     <input
                       id="file-upload-input"
@@ -1314,7 +1311,7 @@ export default function PortalComponent() {
 
                         setFileAttachments(selected);
                       }}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-xs text-slate-700 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-200 file:text-slate-800 hover:file:bg-slate-300 cursor-pointer"
                     />
                   </div>
 
@@ -1322,7 +1319,7 @@ export default function PortalComponent() {
                     <button
                       type="submit"
                       disabled={submitting}
-                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-md flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Send className="w-4 h-4" />
                       {submitting ? "Uploading Proof & Submitting..." : (completingTaskId ? "Submit Proof & Complete Assigned Task" : "Submit Daily Work Log")}
@@ -1334,17 +1331,17 @@ export default function PortalComponent() {
           ) : (
             <div className="space-y-8 max-w-4xl mx-auto w-full">
               {/* Employee Submissions View accessed via Sidebar */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
-                    <History className="w-4 h-4 text-orange-500" /> My Recent Submissions & Done Work
+              <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-4 shadow-sm text-slate-900">
+                <div className="flex justify-between items-center border-b border-[#E6E2D6] pb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-800">
+                    <History className="w-4 h-4 text-orange-600" /> My Recent Submissions & Done Work
                   </h3>
-                  <span className="text-[11px] text-slate-400">Click Eye icon to preview files or re-submit correction</span>
+                  <span className="text-[11px] text-slate-500">Click Eye icon to preview files or re-submit correction</span>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-300">
-                    <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                  <table className="w-full text-left text-xs text-slate-800">
+                    <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider border-b border-[#E6E2D6]">
                       <tr>
                         <th className="p-3">Topic / Subject</th>
                         <th className="p-3">Category</th>
@@ -1354,30 +1351,30 @@ export default function PortalComponent() {
                         <th className="p-3 text-right">Preview / Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-[#E6E2D6]">
                       {myPersonalLogs.map((l) => (
-                        <tr key={l.id} className="hover:bg-slate-800/40">
+                        <tr key={l.id} className="hover:bg-[#F7F4EB]/50">
                           <td className="p-3">
-                            <div className="font-semibold text-white">{l.topic_name}</div>
+                            <div className="font-semibold text-slate-900">{l.topic_name}</div>
                             <div className="text-[10px] text-slate-500">{l.subject_book}</div>
                           </td>
                           <td className="p-3">
                             <div>{l.task_category}</div>
                             {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
                           </td>
-                          <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                          <td className="p-3 text-center font-bold text-slate-900">{l.quantity}</td>
                           <td className="p-3">
                             {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
+                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1 mr-2">
                                 Proof {i + 1} <ExternalLink className="w-3 h-3" />
                               </a>
                             ))}
                           </td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
-                              l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
-                              "bg-amber-950 text-amber-400 border border-amber-800"
+                              l.status === "approved" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                              l.status === "rejected" ? "bg-rose-100 text-rose-800 border border-rose-300" :
+                              "bg-amber-100 text-amber-800 border border-amber-300"
                             }`}>
                               {l.status || "pending"}
                             </span>
@@ -1386,15 +1383,15 @@ export default function PortalComponent() {
                             <button
                               type="button"
                               onClick={() => setPreviewModalLog(l)}
-                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded border border-slate-700 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded border border-slate-300 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
                             >
-                              <Eye className="w-3.5 h-3.5 text-blue-400" /> Preview
+                              <Eye className="w-3.5 h-3.5 text-blue-600" /> Preview
                             </button>
                             {l.status !== "approved" && (
                               <button
                                 type="button"
                                 onClick={() => handleLoadForCorrection(l)}
-                                className="px-2.5 py-1 bg-amber-950/60 hover:bg-amber-600 text-amber-300 hover:text-white rounded border border-amber-800/80 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 bg-amber-100 hover:bg-amber-600 text-amber-900 hover:text-white rounded border border-amber-300 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
                               >
                                 <Edit3 className="w-3.5 h-3.5" /> Fix / Re-submit
                               </button>
@@ -1419,45 +1416,45 @@ export default function PortalComponent() {
             
             {/* Metric Summary Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-slate-400 font-medium">Total Entries</p>
-                <p className="text-2xl font-bold text-white mt-1">{summaryMetrics.totalCount}</p>
+              <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+                <p className="text-xs text-slate-600 font-medium">Total Entries</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">{summaryMetrics.totalCount}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-emerald-400 font-medium">Approved</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-1">{summaryMetrics.approvedCount}</p>
+              <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+                <p className="text-xs text-emerald-700 font-medium">Approved</p>
+                <p className="text-2xl font-bold text-emerald-700 mt-1">{summaryMetrics.approvedCount}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-amber-400 font-medium">Pending Review</p>
-                <p className="text-2xl font-bold text-amber-400 mt-1">{summaryMetrics.pendingCount}</p>
+              <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+                <p className="text-xs text-amber-700 font-medium">Pending Review</p>
+                <p className="text-2xl font-bold text-amber-700 mt-1">{summaryMetrics.pendingCount}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-rose-400 font-medium">Rejected</p>
-                <p className="text-2xl font-bold text-rose-400 mt-1">{summaryMetrics.rejectedCount}</p>
+              <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+                <p className="text-xs text-rose-700 font-medium">Rejected</p>
+                <p className="text-2xl font-bold text-rose-700 mt-1">{summaryMetrics.rejectedCount}</p>
               </div>
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 md:col-span-1">
-                <p className="text-xs text-orange-400 font-medium">Approved Output</p>
-                <p className="text-2xl font-bold text-orange-400 mt-1">{summaryMetrics.totalUnitsProduced}</p>
+              <div className="bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm col-span-2 md:col-span-1 text-slate-900">
+                <p className="text-xs text-orange-600 font-medium">Approved Output</p>
+                <p className="text-2xl font-bold text-orange-600 mt-1">{summaryMetrics.totalUnitsProduced}</p>
               </div>
             </div>
 
             {/* Manager Task Delegation Window */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6 shadow-xl">
-              <div className="border-b border-slate-800 pb-3 flex justify-between items-center">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                  <UserPlus className="w-4 h-4 text-orange-500" /> Delegate Task to Registered Employee
+            <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-6 shadow-sm text-slate-900">
+              <div className="border-b border-[#E6E2D6] pb-3 flex justify-between items-center">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+                  <UserPlus className="w-4 h-4 text-orange-600" /> Delegate Task to Registered Employee
                 </h3>
-                <span className="text-xs text-slate-400">{profilesList.filter(p => p.role !== "deactivated").length} Active Team Members</span>
+                <span className="text-xs text-slate-500">{profilesList.filter(p => p.role !== "deactivated").length} Active Team Members</span>
               </div>
 
               <form onSubmit={handleAssignTask} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Assign To Employee *</label>
+                  <label className="text-slate-700 block mb-1 font-medium">Assign To Employee *</label>
                   <select
                     value={assigneeId}
                     onChange={(e) => setAssigneeId(e.target.value)}
                     required
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                    className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
                   >
                     {profilesList.filter(p => p.role !== "deactivated").map((p) => (
                       <option key={p.id} value={p.id}>
@@ -1468,11 +1465,11 @@ export default function PortalComponent() {
                 </div>
 
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Department *</label>
+                  <label className="text-slate-700 block mb-1 font-medium">Department *</label>
                   <select
                     value={assignDept}
                     onChange={(e) => setAssignDept(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                    className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
                   >
                     <option value="Publications & Testing">Publications & Testing</option>
                     <option value="DTP">DTP</option>
@@ -1481,11 +1478,11 @@ export default function PortalComponent() {
 
                 {assignDept === "Publications & Testing" && (
                   <div>
-                    <label className="text-slate-300 block mb-1 font-medium">Task Category *</label>
+                    <label className="text-slate-700 block mb-1 font-medium">Task Category *</label>
                     <select
                       value={assignCategory}
                       onChange={(e) => setAssignCategory(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
                     >
                       <option value="Question Formation">Question Formation</option>
                       <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
@@ -1499,11 +1496,11 @@ export default function PortalComponent() {
 
                 {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
                   <div>
-                    <label className="text-slate-300 block mb-1 font-medium">Proofing Stage *</label>
+                    <label className="text-slate-700 block mb-1 font-medium">Proofing Stage *</label>
                     <select
                       value={assignStage}
                       onChange={(e) => setAssignStage(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none cursor-pointer"
+                      className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
                     >
                       <option value="Proof 1">Proof 1</option>
                       <option value="Proof 2">Proof 2</option>
@@ -1513,7 +1510,7 @@ export default function PortalComponent() {
                 )}
 
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Target Quantity *</label>
+                  <label className="text-slate-700 block mb-1 font-medium">Target Quantity *</label>
                   <input
                     type="number"
                     min="1"
@@ -1521,31 +1518,31 @@ export default function PortalComponent() {
                     placeholder="e.g. 50"
                     value={assignQty}
                     onChange={(e) => setAssignQty(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                    className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Subject / Book Name *</label>
+                  <label className="text-slate-700 block mb-1 font-medium">Subject / Book Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. RRB Reasoning"
                     value={assignSubject}
                     onChange={(e) => setAssignSubject(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                    className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-slate-300 block mb-1 font-medium">Topic / Chapter Name *</label>
+                  <label className="text-slate-700 block mb-1 font-medium">Topic / Chapter Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Coding Decoding Part 1"
                     value={assignTopic}
                     onChange={(e) => setAssignTopic(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white outline-none"
+                    className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
                   />
                 </div>
 
@@ -1562,10 +1559,10 @@ export default function PortalComponent() {
               </form>
 
               {/* 1. Delegated Tasks Table with Fixed Height Scroll & Searchbar */}
-              <div className="border-t border-slate-800 pt-4">
+              <div className="border-t border-[#E6E2D6] pt-4">
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3">
-                  <h4 className="text-xs font-semibold text-slate-300 flex items-center gap-2">
-                    <Briefcase className="w-3.5 h-3.5 text-orange-500" /> Currently Delegated Tasks ({filteredAssignments.length})
+                  <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
+                    <Briefcase className="w-3.5 h-3.5 text-orange-600" /> Currently Delegated Tasks ({filteredAssignments.length})
                   </h4>
                   
                   <div className="flex items-center gap-2">
@@ -1577,13 +1574,13 @@ export default function PortalComponent() {
                         placeholder="Search employee or task..."
                         value={searchDelegated}
                         onChange={(e) => setSearchDelegated(e.target.value)}
-                        className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-[11px] text-white focus:border-orange-500 outline-none w-52"
+                        className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-[11px] text-slate-900 focus:border-orange-500 outline-none w-52"
                       />
                       {searchDelegated && (
                         <button 
                           type="button" 
                           onClick={() => setSearchDelegated("")} 
-                          className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                          className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -1594,7 +1591,7 @@ export default function PortalComponent() {
                       <button
                         type="button"
                         onClick={handleClearAllAssignments}
-                        className="px-2.5 py-1 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer shrink-0"
+                        className="px-2.5 py-1 bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer shrink-0"
                         title="Delete all delegated tasks"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -1604,25 +1601,25 @@ export default function PortalComponent() {
                   </div>
                 </div>
 
-                <div className="overflow-y-auto max-h-64 border border-slate-800/80 rounded-lg">
-                  <table className="w-full text-left text-[11px] text-slate-300 border-collapse">
-                    <thead className="bg-slate-950 text-slate-400 uppercase text-[9px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
+                <div className="overflow-y-auto max-h-64 border border-[#E6E2D6] rounded-lg">
+                  <table className="w-full text-left text-[11px] text-slate-800 border-collapse">
+                    <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[9px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
                       <tr>
-                        <th className="p-2.5 bg-slate-950">Employee</th>
-                        <th className="p-2.5 bg-slate-950">Topic / Book</th>
-                        <th className="p-2.5 text-center bg-slate-950">Target Qty</th>
-                        <th className="p-2.5 text-center bg-slate-950">Status</th>
-                        <th className="p-2.5 text-right bg-slate-950">Action</th>
+                        <th className="p-2.5 bg-[#F7F4EB]">Employee</th>
+                        <th className="p-2.5 bg-[#F7F4EB]">Topic / Book</th>
+                        <th className="p-2.5 text-center bg-[#F7F4EB]">Target Qty</th>
+                        <th className="p-2.5 text-center bg-[#F7F4EB]">Status</th>
+                        <th className="p-2.5 text-right bg-[#F7F4EB]">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-[#E6E2D6]">
                       {filteredAssignments.map((a) => {
                         const empEmail = profileEmailMap.get(String(a.assigned_to)) || a.assigned_to;
 
                         return (
-                          <tr key={a.id} className="hover:bg-slate-800/40">
+                          <tr key={a.id} className="hover:bg-[#F7F4EB]/50">
                             <td className="p-2.5">
-                              <span className="text-white font-medium block">
+                              <span className="text-slate-900 font-medium block">
                                 {formatUserDisplay(empEmail)}
                               </span>
                               <span className="text-slate-500 text-[10px] font-mono">
@@ -1630,13 +1627,13 @@ export default function PortalComponent() {
                               </span>
                             </td>
                             <td className="p-2.5">
-                              <span className="font-semibold text-white">{a.topic_name}</span>
+                              <span className="font-semibold text-slate-900">{a.topic_name}</span>
                               <span className="text-slate-500 block text-[10px]">{a.subject_book}</span>
                             </td>
-                            <td className="p-2.5 text-center font-bold text-orange-400">{a.target_quantity}</td>
+                            <td className="p-2.5 text-center font-bold text-orange-600">{a.target_quantity}</td>
                             <td className="p-2.5 text-center">
                               <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                a.status === "completed" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" : "bg-amber-950 text-amber-300 border border-amber-800"
+                                a.status === "completed" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-800 border border-amber-300"
                               }`}>
                                 {a.status}
                               </span>
@@ -1645,7 +1642,7 @@ export default function PortalComponent() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteSingleAssignment(a.id)}
-                                className="p-1 text-slate-500 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                                className="p-1 text-slate-400 hover:text-rose-600 hover:bg-slate-200 rounded transition cursor-pointer"
                                 title="Cancel and Delete Task"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1669,10 +1666,10 @@ export default function PortalComponent() {
             <ReportingSection submissions={logs} />
 
             {/* TEAM DIRECTORY & EMPLOYEE MANAGEMENT WINDOW */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                  <Users className="w-4 h-4 text-orange-500" /> Team Directory & Employee Management ({filteredTeamProfiles.length})
+            <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-[#E6E2D6] pb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+                  <Users className="w-4 h-4 text-orange-600" /> Team Directory & Employee Management ({filteredTeamProfiles.length})
                 </h3>
 
                 {/* Team Searchbar */}
@@ -1683,13 +1680,13 @@ export default function PortalComponent() {
                     placeholder="Search employee directory..."
                     value={searchTeam}
                     onChange={(e) => setSearchTeam(e.target.value)}
-                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-xs text-white focus:border-orange-500 outline-none w-56"
+                    className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-xs text-slate-900 focus:border-orange-500 outline-none w-56"
                   />
                   {searchTeam && (
                     <button 
                       type="button" 
                       onClick={() => setSearchTeam("")} 
-                      className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                      className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1697,44 +1694,44 @@ export default function PortalComponent() {
                 </div>
               </div>
 
-              <div className="overflow-y-auto max-h-72 border border-slate-800 rounded-lg">
-                <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
+              <div className="overflow-y-auto max-h-72 border border-[#E6E2D6] rounded-lg">
+                <table className="w-full text-left text-xs text-slate-800 border-collapse">
+                  <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
                     <tr>
-                      <th className="p-3 bg-slate-950">Employee Name</th>
-                      <th className="p-3 bg-slate-950">Workspace Email</th>
-                      <th className="p-3 bg-slate-950">Role</th>
-                      <th className="p-3 bg-slate-950">Joined Date</th>
-                      <th className="p-3 text-right bg-slate-950">Action</th>
+                      <th className="p-3 bg-[#F7F4EB]">Employee Name</th>
+                      <th className="p-3 bg-[#F7F4EB]">Workspace Email</th>
+                      <th className="p-3 bg-[#F7F4EB]">Role</th>
+                      <th className="p-3 bg-[#F7F4EB]">Joined Date</th>
+                      <th className="p-3 text-right bg-[#F7F4EB]">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-[#E6E2D6]">
                     {filteredTeamProfiles.map((p) => {
                       const isDeactivated = p.role === "deactivated";
 
                       return (
-                        <tr key={p.id} className={`hover:bg-slate-800/40 ${isDeactivated ? "opacity-60 bg-rose-950/10" : ""}`}>
-                          <td className="p-3 font-semibold text-white flex items-center gap-2">
+                        <tr key={p.id} className={`hover:bg-[#F7F4EB]/50 ${isDeactivated ? "opacity-60 bg-rose-50" : ""}`}>
+                          <td className="p-3 font-semibold text-slate-900 flex items-center gap-2">
                             {formatUserDisplay(p.email)}
                             {isDeactivated && (
-                              <span className="text-[9px] bg-rose-950 text-rose-300 border border-rose-800 px-1.5 py-0.5 rounded font-bold uppercase">
+                              <span className="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded font-bold uppercase">
                                 Deactivated
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-cyan-300 font-mono text-[11px]">
+                          <td className="p-3 text-cyan-800 font-mono text-[11px]">
                             {p.email || "N/A"}
                           </td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              p.role === "admin" ? "bg-purple-950 text-purple-300 border border-purple-800" :
-                              isDeactivated ? "bg-rose-950 text-rose-300 border border-rose-800" :
-                              "bg-blue-950 text-blue-300 border border-blue-800"
+                              p.role === "admin" ? "bg-purple-100 text-purple-800 border border-purple-300" :
+                              isDeactivated ? "bg-rose-100 text-rose-800 border border-rose-300" :
+                              "bg-blue-100 text-blue-800 border border-blue-300"
                             }`}>
                               {p.role || "employee"}
                             </span>
                           </td>
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                          <td className="p-3 text-slate-500 font-mono text-[11px]">
                             {p.created_at ? p.created_at.slice(0, 10) : "N/A"}
                           </td>
                           <td className="p-3 text-right">
@@ -1743,7 +1740,7 @@ export default function PortalComponent() {
                                 type="button"
                                 onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
                                 disabled={p.id === currentUser?.id}
-                                className="px-2.5 py-1 bg-emerald-950/80 hover:bg-emerald-600 disabled:opacity-30 text-emerald-300 hover:text-white border border-emerald-800 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-600 disabled:opacity-30 text-emerald-900 hover:text-white border border-emerald-300 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
                                 title="Re-activate Employee Account"
                               >
                                 <UserCheck2 className="w-3.5 h-3.5" />
@@ -1754,7 +1751,7 @@ export default function PortalComponent() {
                                 type="button"
                                 onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
                                 disabled={p.id === currentUser?.id}
-                                className="px-2.5 py-1 bg-amber-950/70 hover:bg-amber-600 disabled:opacity-30 text-amber-300 hover:text-white border border-amber-800 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                                className="px-2.5 py-1 bg-amber-100 hover:bg-amber-600 disabled:opacity-30 text-amber-900 hover:text-white border border-amber-300 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
                                 title="Deactivate Employee Account"
                               >
                                 <XCircle className="w-3.5 h-3.5" />
@@ -1776,22 +1773,22 @@ export default function PortalComponent() {
             </div>
 
             {/* Daily Queue Filter Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-orange-500" />
-                  <span className="text-xs text-slate-300 font-semibold uppercase">Daily Queue Filter:</span>
+                  <Filter className="w-4 h-4 text-orange-600" />
+                  <span className="text-xs text-slate-700 font-semibold uppercase">Daily Queue Filter:</span>
                 </div>
                 <input
                   type="date"
                   value={selectedDateFilter}
                   onChange={(e) => setSelectedDateFilter(e.target.value)}
-                  className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none"
+                  className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none"
                 />
                 {selectedDateFilter && (
                   <button
                     onClick={() => setSelectedDateFilter("")}
-                    className="p-1.5 bg-slate-800 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs cursor-pointer"
+                    className="p-1.5 bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg border border-[#E6E2D6] text-xs cursor-pointer"
                     title="Clear date filter"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
@@ -1819,16 +1816,16 @@ export default function PortalComponent() {
                     }));
                     exportToCSV(`exampur_work_logs_${selectedDateFilter || "all"}`, exportRows);
                   }}
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-[#E6E2D6] px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
                 >
-                  <Download className="w-3.5 h-3.5 text-orange-500" />
+                  <Download className="w-3.5 h-3.5 text-orange-600" />
                   Export CSV
                 </button>
 
                 <button
                   type="button"
                   onClick={handleClearAllLogs}
-                  className="flex items-center gap-1.5 bg-rose-950/40 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-800/80 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  className="flex items-center gap-1.5 bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
                   title="Wipe and clean all work logs"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -1838,10 +1835,10 @@ export default function PortalComponent() {
             </div>
 
             {/* 2. Verification Queue with Dedicated Searchbar & Fixed Scroll */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" /> Operational Submissions & Verification Queue ({filteredLogs.length})
+            <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-[#E6E2D6] pb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" /> Operational Submissions & Verification Queue ({filteredLogs.length})
                 </h3>
 
                 {/* Dedicated Queue Searchbar */}
@@ -1852,13 +1849,13 @@ export default function PortalComponent() {
                     placeholder="Search employee or topic..."
                     value={searchQueue}
                     onChange={(e) => setSearchQueue(e.target.value)}
-                    className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1 text-xs text-white focus:border-orange-500 outline-none w-56"
+                    className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-xs text-slate-900 focus:border-orange-500 outline-none w-56"
                   />
                   {searchQueue && (
                     <button 
                       type="button" 
                       onClick={() => setSearchQueue("")} 
-                      className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
+                      className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -1866,36 +1863,36 @@ export default function PortalComponent() {
                 </div>
               </div>
               
-              <div className="overflow-y-auto max-h-80 border border-slate-800 rounded-lg">
-                <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 border-b border-slate-800 z-10">
+              <div className="overflow-y-auto max-h-80 border border-[#E6E2D6] rounded-lg">
+                <table className="w-full text-left text-xs text-slate-800 border-collapse">
+                  <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
                     <tr>
-                      <th className="p-3 bg-slate-950">Date</th>
-                      <th className="p-3 bg-slate-950">Topic / Subject & Submitter</th>
-                      <th className="p-3 bg-slate-950">Category</th>
-                      <th className="p-3 text-center bg-slate-950">Quantity</th>
-                      <th className="p-3 bg-slate-950">Proof</th>
-                      <th className="p-3 bg-slate-950">Status</th>
-                      <th className="p-3 text-right bg-slate-950">Actions</th>
+                      <th className="p-3 bg-[#F7F4EB]">Date</th>
+                      <th className="p-3 bg-[#F7F4EB]">Topic / Subject & Submitter</th>
+                      <th className="p-3 bg-[#F7F4EB]">Category</th>
+                      <th className="p-3 text-center bg-[#F7F4EB]">Quantity</th>
+                      <th className="p-3 bg-[#F7F4EB]">Proof</th>
+                      <th className="p-3 bg-[#F7F4EB]">Status</th>
+                      <th className="p-3 text-right bg-[#F7F4EB]">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-[#E6E2D6]">
                     {filteredLogs.map((l) => {
                       const submitterEmail = profileEmailMap.get(String(l.user_id)) || `Employee (${String(l.user_id).slice(0, 8)}...)`;
 
                       return (
-                        <tr key={l.id} className="hover:bg-slate-800/40">
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">
+                        <tr key={l.id} className="hover:bg-[#F7F4EB]/50">
+                          <td className="p-3 text-slate-500 font-mono text-[11px]">
                             {l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : ""}
                           </td>
                           <td className="p-3">
-                            <div className="font-semibold text-white text-sm">{l.topic_name}</div>
-                            <div className="text-[11px] text-slate-400">{l.subject_book}</div>
+                            <div className="font-semibold text-slate-900 text-sm">{l.topic_name}</div>
+                            <div className="text-[11px] text-slate-500">{l.subject_book}</div>
                             <div className="mt-1.5">
-                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-300 bg-cyan-950/80 border border-cyan-800/70 px-2.5 py-0.5 rounded shadow-sm">
-                                <User className="w-3 h-3 text-cyan-400" />
+                              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-900 bg-cyan-50 border border-cyan-200 px-2.5 py-0.5 rounded shadow-sm">
+                                <User className="w-3 h-3 text-cyan-600" />
                                 {formatUserDisplay(submitterEmail)}
-                                <span className="text-[9px] text-cyan-500 font-mono font-normal">({submitterEmail})</span>
+                                <span className="text-[9px] text-cyan-600 font-mono font-normal">({submitterEmail})</span>
                               </span>
                             </div>
                           </td>
@@ -1903,19 +1900,19 @@ export default function PortalComponent() {
                             <div>{l.task_category}</div>
                             {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
                           </td>
-                          <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                          <td className="p-3 text-center font-bold text-slate-900">{l.quantity}</td>
                           <td className="p-3">
                             {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
+                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1 mr-2">
                                 Proof {i + 1} <ExternalLink className="w-3 h-3" />
                               </a>
                             ))}
                           </td>
                           <td className="p-3">
                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                              l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
-                              l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
-                              "bg-amber-950 text-amber-400 border border-amber-800"
+                              l.status === "approved" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                              l.status === "rejected" ? "bg-rose-100 text-rose-800 border border-rose-300" :
+                              "bg-amber-100 text-amber-800 border border-amber-300"
                             }`}>
                               {l.status || "pending"}
                             </span>
@@ -1952,14 +1949,14 @@ export default function PortalComponent() {
             </div>
 
             {/* 3. Monthly Master Performance Timesheet Matrix with Search & Fixed Scroll */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
-              <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-slate-800 pb-4">
+            <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+              <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-[#E6E2D6] pb-4">
                 <div>
-                  <h3 className="text-sm font-semibold flex items-center gap-2 text-white">
-                    <TableProperties className="w-4 h-4 text-orange-500" />
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+                    <TableProperties className="w-4 h-4 text-orange-600" />
                     Monthly Master Timesheet (Performance Matrix)
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Approved production units broken down by calendar days</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Approved production units broken down by calendar days</p>
                 </div>
 
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -1971,13 +1968,13 @@ export default function PortalComponent() {
                       placeholder="Search employee matrix..."
                       value={searchTimesheet}
                       onChange={(e) => setSearchTimesheet(e.target.value)}
-                      className="bg-slate-950 border border-slate-700 rounded-lg pl-8 pr-7 py-1.5 text-xs text-white focus:border-orange-500 outline-none w-52"
+                      className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none w-52"
                     />
                     {searchTimesheet && (
                       <button 
                         type="button" 
                         onClick={() => setSearchTimesheet("")} 
-                        className="absolute right-2 top-2 text-slate-400 hover:text-white"
+                        className="absolute right-2 top-2 text-slate-400 hover:text-slate-700"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1988,7 +1985,7 @@ export default function PortalComponent() {
                     type="month"
                     value={selectedMonthFilter}
                     onChange={(e) => setSelectedMonthFilter(e.target.value)}
-                    className="bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white focus:border-orange-500 outline-none"
+                    className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none"
                   />
                   
                   <button
@@ -2010,41 +2007,41 @@ export default function PortalComponent() {
                       });
                       exportToCSV(`exampur_master_timesheet_${selectedMonthFilter}`, exportMatrixRows);
                     }}
-                    className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-[#E6E2D6] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
                   >
-                    <Download className="w-3.5 h-3.5 text-orange-500" />
+                    <Download className="w-3.5 h-3.5 text-orange-600" />
                     Export Matrix
                   </button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-slate-800 rounded-lg">
-                <table className="w-full text-left text-xs text-slate-300 border-collapse">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider sticky top-0 z-30 border-b border-slate-800">
+              <div className="overflow-x-auto overflow-y-auto max-h-96 border border-[#E6E2D6] rounded-lg">
+                <table className="w-full text-left text-xs text-slate-800 border-collapse">
+                  <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 z-30 border-b border-[#E6E2D6]">
                     <tr>
-                      <th className="p-2.5 sticky left-0 bg-slate-950 z-40 min-w-[200px]">Employee</th>
-                      <th className="p-2.5 text-center min-w-[70px] bg-slate-950">Total</th>
-                      <th className="p-2.5 text-center min-w-[60px] bg-slate-950">Present</th>
-                      <th className="p-2.5 text-center min-w-[60px] bg-slate-950">Daily Avg</th>
+                      <th className="p-2.5 sticky left-0 bg-[#F7F4EB] z-40 min-w-[200px]">Employee</th>
+                      <th className="p-2.5 text-center min-w-[70px] bg-[#F7F4EB]">Total</th>
+                      <th className="p-2.5 text-center min-w-[60px] bg-[#F7F4EB]">Present</th>
+                      <th className="p-2.5 text-center min-w-[60px] bg-[#F7F4EB]">Daily Avg</th>
                       {monthDays.map((day) => (
-                        <th key={day} className="p-2 text-center min-w-[32px] bg-slate-950">{day}</th>
+                        <th key={day} className="p-2 text-center min-w-[32px] bg-[#F7F4EB]">{day}</th>
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-[#E6E2D6]">
                     {filteredTimesheetData.map((row) => (
-                      <tr key={row.userId} className="hover:bg-slate-800/40">
-                        <td className="p-2.5 sticky left-0 bg-slate-900 font-medium text-white z-20 border-r border-slate-800">
-                          <div className="font-semibold text-white">{formatUserDisplay(row.email)}</div>
+                      <tr key={row.userId} className="hover:bg-[#F7F4EB]/50">
+                        <td className="p-2.5 sticky left-0 bg-white font-medium text-slate-900 z-20 border-r border-[#E6E2D6]">
+                          <div className="font-semibold text-slate-900">{formatUserDisplay(row.email)}</div>
                           <div className="text-[10px] text-slate-500 font-mono">{row.email}</div>
                         </td>
-                        <td className="p-2.5 text-center font-bold text-orange-400 bg-slate-950/40">{row.monthTotalUnits}</td>
-                        <td className="p-2.5 text-center text-slate-300 font-mono">{row.totalPresentDays}</td>
-                        <td className="p-2.5 text-center text-emerald-400 font-semibold font-mono">{row.dailyAvg}</td>
+                        <td className="p-2.5 text-center font-bold text-orange-600 bg-slate-50">{row.monthTotalUnits}</td>
+                        <td className="p-2.5 text-center text-slate-700 font-mono">{row.totalPresentDays}</td>
+                        <td className="p-2.5 text-center text-emerald-700 font-semibold font-mono">{row.dailyAvg}</td>
                         {monthDays.map((day) => {
                           const units = row.dailyUnits[day];
                           return (
-                            <td key={day} className={`p-2 text-center text-[11px] font-mono ${units > 0 ? "text-white font-bold bg-slate-800/60" : "text-slate-600"}`}>
+                            <td key={day} className={`p-2 text-center text-[11px] font-mono ${units > 0 ? "text-slate-900 font-bold bg-[#F7F4EB]" : "text-slate-400"}`}>
                               {units > 0 ? units : "-"}
                             </td>
                           );
@@ -2060,38 +2057,36 @@ export default function PortalComponent() {
                 </table>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* ================= ACTIVE TASKS POPUP MODAL (EMPLOYEE ONLY) ================= */}
+          </div>)}
+{/* ================= ACTIVE TASKS POPUP MODAL (EMPLOYEE ONLY) ================= */}
         {userRole !== "admin" && showActiveTasksModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white border border-[#E6E2D6] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden text-slate-900">
               
-              <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950/60">
+              <div className="p-5 border-b border-[#E6E2D6] flex justify-between items-center bg-[#F7F4EB]">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 bg-orange-600/20 text-orange-500 rounded-lg">
+                  <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-white">Active Tasks Overview</h3>
-                    <p className="text-xs text-slate-400">Assigned delegation & pending verification logs</p>
+                    <h3 className="text-base font-bold text-slate-900">Active Tasks Overview</h3>
+                    <p className="text-xs text-slate-500">Assigned delegation & pending verification logs</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowActiveTasksModal(false)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200 rounded-lg transition cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
-
-              <div className="p-6 overflow-y-auto space-y-6">
+        
+              <div className="p-6 overflow-y-auto space-y-6 bg-[#FDFBF7]">
                 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-400 flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-600 flex items-center gap-2">
                       <Briefcase className="w-4 h-4" /> Delegated By Manager ({myAssignedTasks.length})
                     </h4>
                     <span className="text-[10px] text-slate-500">Awaiting your completion</span>
@@ -2100,22 +2095,22 @@ export default function PortalComponent() {
                   {myAssignedTasks.length > 0 ? (
                     <div className="space-y-2.5">
                       {myAssignedTasks.map((task) => (
-                        <div key={task.id} className="bg-slate-950 border border-slate-800 hover:border-orange-500/40 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div key={task.id} className="bg-white border border-[#E6E2D6] hover:border-orange-400 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-sm font-semibold text-white">{task.topic_name}</span>
-                              <span className="text-[10px] bg-orange-950 text-orange-300 border border-orange-800 px-2 py-0.5 rounded font-mono">
+                              <span className="text-sm font-semibold text-slate-900">{task.topic_name}</span>
+                              <span className="text-[10px] bg-orange-100 text-orange-800 border border-orange-300 px-2 py-0.5 rounded font-mono">
                                 Target: {task.target_quantity} Units
                               </span>
                             </div>
-                            <p className="text-xs text-slate-400">
-                              Book: <span className="text-slate-200">{task.subject_book}</span> &bull; {task.task_category}
+                            <p className="text-xs text-slate-600">
+                              Book: <span className="text-slate-900 font-medium">{task.subject_book}</span> &bull; {task.task_category}
                             </p>
                           </div>
                           <button
                             type="button"
                             onClick={() => selectTaskToWork(task)}
-                            className="w-full sm:w-auto px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                            className="w-full sm:w-auto px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                           >
                             <CheckSquare className="w-3.5 h-3.5" />
                             Work on this Task
@@ -2124,7 +2119,7 @@ export default function PortalComponent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs text-slate-500">
+                    <div className="p-4 bg-white border border-[#E6E2D6] rounded-xl text-center text-xs text-slate-500 shadow-sm">
                       No delegated tasks assigned by manager right now.
                     </div>
                   )}
@@ -2132,7 +2127,7 @@ export default function PortalComponent() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700 flex items-center gap-2">
                       <Clock className="w-4 h-4" /> Pending Manager Review ({myPendingLogs.length})
                     </h4>
                     <span className="text-[10px] text-slate-500">Submitted & awaiting verification</span>
@@ -2141,16 +2136,16 @@ export default function PortalComponent() {
                   {myPendingLogs.length > 0 ? (
                     <div className="space-y-2">
                       {myPendingLogs.map((log) => (
-                        <div key={log.id} className="bg-slate-950 border border-slate-800 p-3.5 rounded-xl flex justify-between items-center text-xs">
+                        <div key={log.id} className="bg-white border border-[#E6E2D6] p-3.5 rounded-xl flex justify-between items-center text-xs shadow-sm">
                           <div>
-                            <p className="font-semibold text-white">{log.topic_name}</p>
-                            <p className="text-[11px] text-slate-400">{log.subject_book} &bull; {log.task_category}</p>
+                            <p className="font-semibold text-slate-900">{log.topic_name}</p>
+                            <p className="text-[11px] text-slate-600">{log.subject_book} &bull; {log.task_category}</p>
                             <p className="text-[10px] text-slate-500 mt-0.5">Submitted: {new Date(log.created_at).toLocaleDateString("en-CA")}</p>
                           </div>
                           <div className="text-right space-y-1">
-                            <span className="text-sm font-bold text-white font-mono">{log.quantity} Qty</span>
+                            <span className="text-sm font-bold text-slate-900 font-mono">{log.quantity} Qty</span>
                             <div>
-                              <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold uppercase">
+                              <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded font-bold uppercase">
                                 PENDING
                               </span>
                             </div>
@@ -2159,7 +2154,7 @@ export default function PortalComponent() {
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 bg-slate-950 border border-slate-800/80 rounded-xl text-center text-xs text-slate-500">
+                    <div className="p-4 bg-white border border-[#E6E2D6] rounded-xl text-center text-xs text-slate-500 shadow-sm">
                       No submissions currently pending manager approval.
                     </div>
                   )}
@@ -2167,11 +2162,11 @@ export default function PortalComponent() {
 
               </div>
 
-              <div className="p-4 border-t border-slate-800 bg-slate-950/60 flex justify-end">
+              <div className="p-4 border-t border-[#E6E2D6] bg-[#F7F4EB] flex justify-end">
                 <button
                   type="button"
                   onClick={() => setShowActiveTasksModal(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition cursor-pointer"
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg text-xs font-medium transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -2180,8 +2175,6 @@ export default function PortalComponent() {
             </div>
           </div>
         )}
-
-        {/* ================= DONE WORK PREVIEW & REVISION MODAL ================= */}
         {previewModalLog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
             <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -2463,7 +2456,7 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
         )}
 
         <div>
-          <button
+         <button
             type="button"
             onClick={handleGenerateReport}
             className="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs py-2.5 px-3 rounded-lg transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
