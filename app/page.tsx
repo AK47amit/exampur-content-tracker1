@@ -62,6 +62,7 @@ export default function PortalComponent() {
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'dashboard' | 'submissions'>('dashboard');
+  const [darkMode, setDarkMode] = useState(true);
   const [previewModalLog, setPreviewModalLog] = useState<any | null>(null);
   const [flashAlert, setFlashAlert] = useState<{
     show: boolean;
@@ -946,8 +947,26 @@ export default function PortalComponent() {
       {/* Left Sliding Panel / Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
         <div className="p-5 border-b border-slate-800 flex justify-between items-center">
-          <span className="font-extrabold text-base tracking-wide text-white">Exampur Ops</span>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">✕</button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsSidebarOpen(false)} 
+              className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/60 cursor-pointer"
+              title="Close Sidebar"
+            >
+              ✕
+            </button>
+            <span className="font-extrabold text-base tracking-wide text-white">Exampur Ops</span>
+          </div>
+          
+          {/* Circular Light / Dark Mode Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setDarkMode(!darkMode)}
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center transition shadow-md cursor-pointer border border-slate-700"
+            title="Toggle Light/Dark Mode"
+          >
+            {darkMode ? "🌙" : "☀️"}
+          </button>
         </div>
         
         <nav className="p-4 space-y-2 text-sm">
@@ -984,13 +1003,13 @@ export default function PortalComponent() {
       {/* Main Content Area Wrapper */}
       <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10">
         
-        {/* Mobile Menu Toggle Bar */}
-        <div className="mb-6 flex items-center md:hidden">
+        {/* Universal Sidebar Slider / Hamburger Toggle Bar */}
+        <div className="mb-6 flex items-center">
           <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-2 cursor-pointer shadow-md"
           >
-            ☰ Menu
+            <span className="text-base">☰</span> Toggle Sidebar Panel
           </button>
         </div>
 
