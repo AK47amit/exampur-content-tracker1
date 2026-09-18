@@ -939,17 +939,13 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
-{/* Clean Exampur Logo & Title */}
-<div className="flex items-center gap-3 mb-6 p-2">
+{/* Pure Logo Header (No Text) */}
+<div className="flex items-center mb-6 p-2">
   <img 
     src="https://appsquadz.com/assets/exampur%20logo-BGIPYXIV.svg" 
     alt="Exampur Logo" 
     className="h-10 w-auto object-contain"
   />
-  <div>
-    <h1 className="font-extrabold text-base leading-tight text-white tracking-wide">Exampur</h1>
-    <p className="text-xs text-slate-400 font-medium">Ops Portal & Content Tracker</p>
-  </div>
 </div>
 
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
