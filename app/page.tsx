@@ -61,6 +61,7 @@ export default function PortalComponent() {
   // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'dashboard' | 'submissions'>('dashboard');
   const [previewModalLog, setPreviewModalLog] = useState<any | null>(null);
   const [flashAlert, setFlashAlert] = useState<{
     show: boolean;
@@ -939,6 +940,7 @@ export default function PortalComponent() {
 
   return (
  
+   
     <div className="min-h-screen bg-slate-950 text-slate-100 flex relative w-full">
       
       {/* Left Sliding Panel / Sidebar */}
@@ -959,9 +961,21 @@ export default function PortalComponent() {
             </>
           ) : (
             <>
-              {/* Employee Sidebar Links */}
-              <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
-              <a href="#my-submissions-section" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">My Recent Submissions & Done Work</a>
+              {/* Employee Sidebar Links with View Switching */}
+              <a 
+                href="#" 
+                onClick={() => { setCurrentView('dashboard'); setIsSidebarOpen(false); }} 
+                className={`block px-3 py-2 rounded-lg transition ${currentView === 'dashboard' ? 'bg-red-600 text-white font-medium' : 'text-slate-300 hover:bg-slate-800'}`}
+              >
+                Dashboard
+              </a>
+              <a 
+                href="#" 
+                onClick={() => { setCurrentView('submissions'); setIsSidebarOpen(false); }} 
+                className={`block px-3 py-2 rounded-lg transition ${currentView === 'submissions' ? 'bg-red-600 text-white font-medium' : 'text-slate-300 hover:bg-slate-800'}`}
+              >
+                My Recent Submissions & Done Work
+              </a>
             </>
           )}
         </nav>
@@ -1100,294 +1114,293 @@ export default function PortalComponent() {
 
         {/* ================= CONDITIONAL WORKSPACE ROUTING ================= */}
         {userRole !== "admin" ? (
-          /* ================= EMPLOYEE VIEW ================= */
-          <div className="space-y-8 max-w-4xl mx-auto w-full">
-            
-            {/* Employee Operational KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <button
-                type="button"
-                onClick={() => setShowActiveTasksModal(true)}
-                className="bg-slate-900 hover:bg-slate-800/80 border border-orange-500/50 hover:border-orange-500 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-lg group relative overflow-hidden"
-              >
-                <div className="flex justify-between items-start">
-                  <p className="text-xs text-orange-400 font-semibold group-hover:text-orange-300 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5" /> My Active Tasks (Pending/Assigned)
+          /* ================= EMPLOYEE VIEW (DASHBOARD vs SUBMISSIONS TAB) ================= */
+          currentView === 'dashboard' ? (
+            <div className="space-y-8 max-w-4xl mx-auto w-full">
+              
+              {/* Employee Operational KPI Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowActiveTasksModal(true)}
+                  className="bg-slate-900 hover:bg-slate-800/80 border border-orange-500/50 hover:border-orange-500 p-4 rounded-xl text-left transition duration-200 cursor-pointer shadow-lg group relative overflow-hidden"
+                >
+                  <div className="flex justify-between items-start">
+                    <p className="text-xs text-orange-400 font-semibold group-hover:text-orange-300 flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" /> My Active Tasks (Pending/Assigned)
+                    </p>
+                    <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">View List &rarr;</span>
+                  </div>
+                  <p className="text-2xl font-bold text-orange-400 mt-2">
+                    {myAssignedTasks.length + myPendingLogs.length}
                   </p>
-                  <span className="text-[10px] bg-orange-600/20 text-orange-300 px-1.5 py-0.5 rounded border border-orange-700/40">View List &rarr;</span>
-                </div>
-                <p className="text-2xl font-bold text-orange-400 mt-2">
-                  {myAssignedTasks.length + myPendingLogs.length}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Under Review
-                </p>
-              </button>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    {myAssignedTasks.length} Assigned &bull; {myPendingLogs.length} Under Review
+                  </p>
+                </button>
 
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
-                <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
-                <p className="text-2xl font-bold text-emerald-400 mt-2">
-                  {myPersonalLogs.filter(l => l.status === "approved").length}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1">Verified output records</p>
-              </div>
-
-              <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
-                <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
-                <p className="text-2xl font-bold text-blue-400 mt-2">
-                  {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
-                </p>
-                <p className="text-[11px] text-slate-400 mt-1">Cumulative verified count</p>
-              </div>
-            </div>
-
-            {/* Submission Form */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
-              <div className="border-b border-slate-800 pb-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <Send className="w-5 h-5 text-orange-500" /> Daily Work Log Submission
-                </h2>
-                <p className="text-slate-400 text-xs mt-1">
-                  <span className="text-rose-400 font-semibold">* All fields and proof attachments are strictly mandatory.</span>
-                </p>
-              </div>
-
-              <form onSubmit={handleWorkSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">Department <span className="text-rose-500">*</span></label>
-                  <select
-                    required
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
-                  >
-                    <option value="Publications & Testing">Publications & Testing</option>
-                    <option value="DTP">DTP</option>
-                  </select>
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <p className="text-xs text-emerald-400 font-medium">My Approved Submissions</p>
+                  <p className="text-2xl font-bold text-emerald-400 mt-2">
+                    {myPersonalLogs.filter(l => l.status === "approved").length}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">Verified output records</p>
                 </div>
 
-                {department === "Publications & Testing" && (
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl col-span-2 sm:col-span-1">
+                  <p className="text-xs text-blue-400 font-medium">My Total Units Produced</p>
+                  <p className="text-2xl font-bold text-blue-400 mt-2">
+                    {myPersonalLogs.filter(l => l.status === "approved").reduce((sum, l) => sum + (Number(l.quantity) || 0), 0)}
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-1">Cumulative verified count</p>
+                </div>
+              </div>
+
+              {/* Submission Form */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 md:p-8 space-y-6">
+                <div className="border-b border-slate-800 pb-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Send className="w-5 h-5 text-orange-500" /> Daily Work Log Submission
+                  </h2>
+                  <p className="text-slate-400 text-xs mt-1">
+                    <span className="text-rose-400 font-semibold">* All fields and proof attachments are strictly mandatory.</span>
+                  </p>
+                </div>
+
+                <form onSubmit={handleWorkSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">Task Type <span className="text-rose-500">*</span></label>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">Department <span className="text-rose-500">*</span></label>
                     <select
                       required
-                      value={taskCategory}
-                      onChange={(e) => setTaskCategory(e.target.value)}
+                      value={department}
+                      onChange={(e) => setDepartment(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
                     >
-                      <option value="Question Formation">Question Formation</option>
-                      <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
-                      <option value="Proofing">Proofing</option>
-                      <option value="Solution Drafting">Solution Drafting</option>
-                      <option value="Translation">Translation</option>
-                      <option value="Review / Fact Check">Review / Fact Check</option>
+                      <option value="Publications & Testing">Publications & Testing</option>
+                      <option value="DTP">DTP</option>
                     </select>
                   </div>
-                )}
 
-                {department === "Publications & Testing" && taskCategory === "Proofing" && (
+                  {department === "Publications & Testing" && (
+                    <div>
+                      <label className="text-xs text-slate-300 block mb-2 font-medium">Task Type <span className="text-rose-500">*</span></label>
+                      <select
+                        required
+                        value={taskCategory}
+                        onChange={(e) => setTaskCategory(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                      >
+                        <option value="Question Formation">Question Formation</option>
+                        <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
+                        <option value="Proofing">Proofing</option>
+                        <option value="Solution Drafting">Solution Drafting</option>
+                        <option value="Translation">Translation</option>
+                        <option value="Review / Fact Check">Review / Fact Check</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {department === "Publications & Testing" && taskCategory === "Proofing" && (
+                    <div>
+                      <label className="text-xs text-slate-300 block mb-2 font-medium">Proofing Stage <span className="text-rose-500">*</span></label>
+                      <select
+                        required
+                        value={stage}
+                        onChange={(e) => setStage(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
+                      >
+                        <option value="Proof 1">Proof 1</option>
+                        <option value="Proof 2">Proof 2</option>
+                        <option value="Final Quality Check">Final Quality Check</option>
+                      </select>
+                    </div>
+                  )}
+
                   <div>
-                    <label className="text-xs text-slate-300 block mb-2 font-medium">Proofing Stage <span className="text-rose-500">*</span></label>
-                    <select
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs text-slate-300 font-medium">
+                        Subject / Book Name <span className="text-rose-500">*</span>
+                      </label>
+                      {myRememberedBooks.length > 0 && (
+                        <span className="text-[10px] text-orange-400 font-mono">
+                          {myRememberedBooks.length} Saved Books
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      list="remembered-books"
                       required
-                      value={stage}
-                      onChange={(e) => setStage(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none cursor-pointer"
-                    >
-                      <option value="Proof 1">Proof 1</option>
-                      <option value="Proof 2">Proof 2</option>
-                      <option value="Final Quality Check">Final Quality Check</option>
-                    </select>
+                      placeholder="Type or select from your past books..."
+                      value={subjectBook}
+                      onChange={(e) => setSubjectBook(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                    />
+                    <datalist id="remembered-books">
+                      {myRememberedBooks.map((book, idx) => (
+                        <option key={idx} value={book} />
+                      ))}
+                    </datalist>
                   </div>
-                )}
 
-                <div>
-                  <div className="flex justify-between items-center mb-2">
-                    <label className="text-xs text-slate-300 font-medium">
-                      Subject / Book Name <span className="text-rose-500">*</span>
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">Topic / Chapter Name <span className="text-rose-500">*</span></label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Number System Part 1"
+                      value={topicName}
+                      onChange={(e) => setTopicName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">Quantity Completed <span className="text-rose-500">*</span></label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      placeholder="e.g., 50"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="text-xs text-slate-300 block mb-2 font-medium">
+                      Attach Mandatory Proof (Max 3MB per file, Max 10MB total) <span className="text-rose-500">*</span>
                     </label>
-                    {myRememberedBooks.length > 0 && (
-                      <span className="text-[10px] text-orange-400 font-mono">
-                        {myRememberedBooks.length} Saved Books
-                      </span>
-                    )}
+                    <input
+                      id="file-upload-input"
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf"
+                      required
+                      onChange={(e) => {
+                        if (!e.target.files) return;
+                        const selected = Array.from(e.target.files);
+                        const MAX_SINGLE = 3 * 1024 * 1024;
+                        const MAX_BATCH = 10 * 1024 * 1024;
+
+                        const oversizedFile = selected.find((f) => f.size > MAX_SINGLE);
+                        if (oversizedFile) {
+                          alert(`File "${oversizedFile.name}" exceeds 3MB limit!`);
+                          e.target.value = "";
+                          setFileAttachments([]);
+                          return;
+                        }
+
+                        const total = selected.reduce((acc, f) => acc + f.size, 0);
+                        if (total > MAX_BATCH) {
+                          alert("Total batch size exceeds 10MB limit!");
+                          e.target.value = "";
+                          setFileAttachments([]);
+                          return;
+                        }
+
+                        setFileAttachments(selected);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
+                    />
                   </div>
-                  <input
-                    type="text"
-                    list="remembered-books"
-                    required
-                    placeholder="Type or select from your past books..."
-                    value={subjectBook}
-                    onChange={(e) => setSubjectBook(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
-                  />
-                  <datalist id="remembered-books">
-                    {myRememberedBooks.map((book, idx) => (
-                      <option key={idx} value={book} />
-                    ))}
-                  </datalist>
-                </div>
 
-                <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">Topic / Chapter Name <span className="text-rose-500">*</span></label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g., Number System Part 1"
-                    value={topicName}
-                    onChange={(e) => setTopicName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">Quantity Completed <span className="text-rose-500">*</span></label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    placeholder="e.g., 50"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-sm focus:border-orange-500 outline-none"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="text-xs text-slate-300 block mb-2 font-medium">
-                    Attach Mandatory Proof (Max 3MB per file, Max 10MB total) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="file-upload-input"
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf"
-                    required
-                    onChange={(e) => {
-                      if (!e.target.files) return;
-                      const selected = Array.from(e.target.files);
-                      const MAX_SINGLE = 3 * 1024 * 1024;
-                      const MAX_BATCH = 10 * 1024 * 1024;
-
-                      const oversizedFile = selected.find((f) => f.size > MAX_SINGLE);
-                      if (oversizedFile) {
-                        alert(`File "${oversizedFile.name}" exceeds 3MB limit!`);
-                        e.target.value = "";
-                        setFileAttachments([]);
-                        return;
-                      }
-
-                      const total = selected.reduce((acc, f) => acc + f.size, 0);
-                      if (total > MAX_BATCH) {
-                        alert("Total batch size exceeds 10MB limit!");
-                        e.target.value = "";
-                        setFileAttachments([]);
-                        return;
-                      }
-
-                      setFileAttachments(selected);
-                    }}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-400 file:mr-3 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-xs file:bg-slate-800 file:text-slate-200 hover:file:bg-slate-700 cursor-pointer"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                    {submitting ? "Uploading Proof & Submitting..." : (completingTaskId ? "Submit Proof & Complete Assigned Task" : "Submit Daily Work Log")}
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Employee's Own Logs with Preview & Correction Action (ID added for Sidebar Link) */}
-            <div id="my-submissions-section" className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl scroll-mt-6">
-              <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
-                  <History className="w-4 h-4 text-orange-500" /> My Recent Submissions & Done Work
-                </h3>
-                <span className="text-[11px] text-slate-400">Click Eye icon to preview files or re-submit correction</span>
+                  <div className="md:col-span-2">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full py-3 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-semibold rounded-lg text-sm transition shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      {submitting ? "Uploading Proof & Submitting..." : (completingTaskId ? "Submit Proof & Complete Assigned Task" : "Submit Daily Work Log")}
+                    </button>
+                  </div>
+                </form>
               </div>
+            </div>
+          ) : (
+            <div className="space-y-8 max-w-4xl mx-auto w-full">
+              {/* Employee Submissions View accessed via Sidebar */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-xl">
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-300">
+                    <History className="w-4 h-4 text-orange-500" /> My Recent Submissions & Done Work
+                  </h3>
+                  <span className="text-[11px] text-slate-400">Click Eye icon to preview files or re-submit correction</span>
+                </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
-                    <tr>
-                      <th className="p-3">Topic / Subject</th>
-                      <th className="p-3">Category</th>
-                      <th className="p-3 text-center">Qty</th>
-                      <th className="p-3">Proof</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Preview / Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {myPersonalLogs.slice(0, 15).map((l) => (
-                      <tr key={l.id} className="hover:bg-slate-800/40">
-                        <td className="p-3">
-                          <div className="font-semibold text-white">{l.topic_name}</div>
-                          <div className="text-[10px] text-slate-500">{l.subject_book}</div>
-                        </td>
-                        <td className="p-3">
-                          <div>{l.task_category}</div>
-                          {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
-                        </td>
-                        <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
-                        <td className="p-3">
-                          {parseAttachmentUrls(l.attachment_url).map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
-                              Proof {i + 1} <ExternalLink className="w-3 h-3" />
-                            </a>
-                          ))}
-                        </td>
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
-                            l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
-                            "bg-amber-950 text-amber-400 border border-amber-800"
-                          }`}>
-                            {l.status || "pending"}
-                          </span>
-                        </td>
-                        <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setPreviewModalLog(l)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded border border-slate-700 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
-                            title="Preview submitted work"
-                          >
-                            <Eye className="w-3.5 h-3.5 text-blue-400" />
-                            Preview
-                          </button>
-
-                          {l.status !== "approved" && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Topic / Subject</th>
+                        <th className="p-3">Category</th>
+                        <th className="p-3 text-center">Qty</th>
+                        <th className="p-3">Proof</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Preview / Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {myPersonalLogs.map((l) => (
+                        <tr key={l.id} className="hover:bg-slate-800/40">
+                          <td className="p-3">
+                            <div className="font-semibold text-white">{l.topic_name}</div>
+                            <div className="text-[10px] text-slate-500">{l.subject_book}</div>
+                          </td>
+                          <td className="p-3">
+                            <div>{l.task_category}</div>
+                            {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
+                          </td>
+                          <td className="p-3 text-center font-bold text-white">{l.quantity}</td>
+                          <td className="p-3">
+                            {parseAttachmentUrls(l.attachment_url).map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline inline-flex items-center gap-1 mr-2">
+                                Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                              </a>
+                            ))}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              l.status === "approved" ? "bg-emerald-950 text-emerald-400 border border-emerald-800" :
+                              l.status === "rejected" ? "bg-rose-950 text-rose-400 border border-rose-800" :
+                              "bg-amber-950 text-amber-400 border border-amber-800"
+                            }`}>
+                              {l.status || "pending"}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
                             <button
                               type="button"
-                              onClick={() => handleLoadForCorrection(l)}
-                              className="px-2.5 py-1 bg-amber-950/60 hover:bg-amber-600 text-amber-300 hover:text-white rounded border border-amber-800/80 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
-                              title="Edit and Re-submit"
+                              onClick={() => setPreviewModalLog(l)}
+                              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded border border-slate-700 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              Fix / Re-submit
+                              <Eye className="w-3.5 h-3.5 text-blue-400" /> Preview
                             </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {myPersonalLogs.length === 0 && (
-                      <tr>
-                        <td colSpan={6} className="p-4 text-center text-slate-500">No submissions logged yet today.</td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                            {l.status !== "approved" && (
+                              <button
+                                type="button"
+                                onClick={() => handleLoadForCorrection(l)}
+                                className="px-2.5 py-1 bg-amber-950/60 hover:bg-amber-600 text-amber-300 hover:text-white rounded border border-amber-800/80 text-[11px] font-medium transition inline-flex items-center gap-1 cursor-pointer"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" /> Fix / Re-submit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {myPersonalLogs.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="p-4 text-center text-slate-500">No submissions logged yet.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
-          </div>
+          )
         ) : (
           /* ================= MANAGER MASTER DASHBOARD ================= */
           <div className="space-y-8">
