@@ -1469,143 +1469,653 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* TAB 1: VERIFICATION QUEUE */}
-            {adminView === 'queue' && (
-              <div className="space-y-6">
-                <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
-                  <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
-                    Verification Queue ({filteredLogs.length})
-                  </h3>
-                  <div className="overflow-y-auto max-h-96 border border-[#E6E2D6] rounded-lg">
-                    <table className="w-full text-left text-xs text-slate-800 border-collapse">
-                      <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0">
-                        <tr>
-                          <th className="p-3">Date</th>
-                          <th className="p-3">Topic / Subject & Submitter</th>
-                          <th className="p-3 text-center">Quantity</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#E6E2D6]">
-                        {filteredLogs.map((l) => (
-                          <tr key={l.id} className="hover:bg-[#F7F4EB]/50">
-                            <td className="p-3 font-mono">{l.created_at?.slice(0, 10)}</td>
-                            <td className="p-3">
-                              <div className="font-semibold text-slate-900">{l.topic_name}</div>
-                              <div className="text-[11px] text-slate-500">{profileEmailMap.get(String(l.user_id))}</div>
-                            </td>
-                            <td className="p-3 text-center font-bold">{l.quantity}</td>
-                            <td className="p-3 uppercase font-bold text-[10px]">{l.status}</td>
-                            <td className="p-3 text-right space-x-2">
-                              <button onClick={() => updateStatus(l.id, "approved")} className="bg-emerald-600 text-white px-2.5 py-1 rounded cursor-pointer">Approve</button>
-                              <button onClick={() => updateStatus(l.id, "rejected")} className="bg-rose-600 text-white px-2.5 py-1 rounded cursor-pointer">Reject</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
+           {/* TAB 1: VERIFICATION QUEUE */}
+    {adminView === 'queue' && (
+      <div className="space-y-6">
+        {/* Daily Queue Filter Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-[#E6E2D6] p-4 rounded-xl shadow-sm text-slate-900">
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-orange-600" />
+              <span className="text-xs text-slate-700 font-semibold uppercase">Daily Queue Filter:</span>
+            </div>
+            <input
+              type="date"
+              value={selectedDateFilter}
+              onChange={(e) => setSelectedDateFilter(e.target.value)}
+              className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none"
+            />
+            {selectedDateFilter && (
+              <button
+                onClick={() => setSelectedDateFilter("")}
+                className="p-1.5 bg-slate-100 text-slate-700 hover:text-slate-900 rounded-lg border border-[#E6E2D6] text-xs cursor-pointer"
+                title="Clear date filter"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
             )}
+          </div>
 
-            {/* TAB 2: DELEGATED TASKS */}
-            {adminView === 'delegated' && (
-              <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-6 shadow-sm text-slate-900">
-                <h3 className="text-sm font-semibold text-slate-900">Delegated Tasks Management</h3>
-                <form onSubmit={handleAssignTask} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-medium">Assign To *</label>
-                    <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} required className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5">
-                      {profilesList.map(p => <option key={p.id} value={p.id}>{p.email}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-medium">Target Qty *</label>
-                    <input type="number" required value={assignQty} onChange={(e) => setAssignQty(e.target.value)} className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5" />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-medium">Book *</label>
-                    <input type="text" required value={assignSubject} onChange={(e) => setAssignSubject(e.target.value)} className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5" />
-                  </div>
-                  <div>
-                    <label className="text-slate-700 block mb-1 font-medium">Topic *</label>
-                    <input type="text" required value={assignTopic} onChange={(e) => setAssignTopic(e.target.value)} className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5" />
-                  </div>
-                  <div className="md:col-span-3 flex justify-end">
-                    <button type="submit" className="px-6 py-2 bg-orange-600 text-white rounded-lg text-xs font-semibold cursor-pointer">Assign Task</button>
-                  </div>
-                </form>
-              </div>
-            )}
+          <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                const exportRows = filteredLogs.map((l) => ({
+                  Date: l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : "",
+                  Employee_Name: formatUserDisplay(profileEmailMap.get(String(l.user_id))),
+                  Employee_Email: profileEmailMap.get(String(l.user_id)) || "",
+                  Department: l.department || "",
+                  Task_Category: l.task_category || "",
+                  Stage: l.stage || "",
+                  Subject_Book: l.subject_book || "",
+                  Topic_Name: l.topic_name || "",
+                  Quantity: l.quantity || 0,
+                  Status: l.status || "pending",
+                }));
+                exportToCSV(`exampur_work_logs_${selectedDateFilter || "all"}`, exportRows);
+              }}
+              className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-[#E6E2D6] px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-orange-600" /> Export CSV
+            </button>
 
-            {/* TAB 3: REPORTS */}
-            {adminView === 'reports' && (
-              <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-4 shadow-sm text-slate-900">
-                <h3 className="text-sm font-semibold text-slate-900">Reports</h3>
-                <p className="text-xs text-slate-500">Advanced Operations Reporting</p>
-                <button onClick={() => alert("Report downloaded successfully!")} className="px-4 py-2 bg-orange-600 text-white rounded-lg text-xs font-semibold cursor-pointer">
-                  Download Sheet
+            <button
+              type="button"
+              onClick={handleClearAllLogs}
+              className="flex items-center gap-1.5 bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Reset All Logs
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-[#E6E2D6] pb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+              <ShieldCheck className="w-4 h-4 text-emerald-700" /> Operational Submissions & Verification Queue ({filteredLogs.length})
+            </h3>
+
+            {/* Dedicated Queue Searchbar */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search employee or topic..."
+                value={searchQueue}
+                onChange={(e) => setSearchQueue(e.target.value)}
+                className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-xs text-slate-900 focus:border-orange-500 outline-none w-56"
+              />
+              {searchQueue && (
+                <button 
+                  type="button" 
+                  onClick={() => setSearchQueue("")} 
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-3 h-3" />
                 </button>
+              )}
+            </div>
+          </div>
+          
+          <div className="overflow-y-auto max-h-96 border border-[#E6E2D6] rounded-lg">
+            <table className="w-full text-left text-xs text-slate-800 border-collapse">
+              <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
+                <tr>
+                  <th className="p-3 bg-[#F7F4EB]">Date</th>
+                  <th className="p-3 bg-[#F7F4EB]">Topic / Subject & Submitter</th>
+                  <th className="p-3 bg-[#F7F4EB]">Category</th>
+                  <th className="p-3 text-center bg-[#F7F4EB]">Quantity</th>
+                  <th className="p-3 bg-[#F7F4EB]">Proof</th>
+                  <th className="p-3 bg-[#F7F4EB]">Status</th>
+                  <th className="p-3 text-right bg-[#F7F4EB]">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E6E2D6]">
+                {filteredLogs.map((l) => {
+                  const submitterEmail = profileEmailMap.get(String(l.user_id)) || `Employee (${String(l.user_id).slice(0, 8)}...)`;
+
+                  return (
+                    <tr key={l.id} className="hover:bg-[#F7F4EB]/50">
+                      <td className="p-3 text-slate-500 font-mono text-[11px]">
+                        {l.created_at ? new Date(l.created_at).toLocaleDateString("en-CA") : ""}
+                      </td>
+                      <td className="p-3">
+                        <div className="font-semibold text-slate-900 text-sm">{l.topic_name}</div>
+                        <div className="text-[11px] text-slate-500">{l.subject_book}</div>
+                        <div className="mt-1.5">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-cyan-900 bg-cyan-50 border border-cyan-200 px-2.5 py-0.5 rounded shadow-sm">
+                            <User className="w-3 h-3 text-cyan-600" />
+                            {formatUserDisplay(submitterEmail)}
+                            <span className="text-[9px] text-cyan-600 font-mono font-normal">({submitterEmail})</span>
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div>{l.task_category}</div>
+                        {l.stage && <div className="text-[10px] text-slate-500">{l.stage}</div>}
+                      </td>
+                      <td className="p-3 text-center font-bold text-slate-900">{l.quantity}</td>
+                      <td className="p-3">
+                        {parseAttachmentUrls(l.attachment_url).map((url, i) => (
+                          <a key={i} href={url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline inline-flex items-center gap-1 mr-2">
+                            Proof {i + 1} <ExternalLink className="w-3 h-3" />
+                          </a>
+                        ))}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          l.status === "approved" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" :
+                          l.status === "rejected" ? "bg-rose-100 text-rose-800 border border-rose-300" :
+                          "bg-amber-100 text-amber-800 border border-amber-300"
+                        }`}>
+                          {l.status || "pending"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-right space-x-2 whitespace-nowrap">
+                        {l.status !== "approved" && (
+                          <button
+                            onClick={() => updateStatus(l.id, "approved")}
+                            className="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {l.status !== "rejected" && (
+                          <button
+                            onClick={() => updateStatus(l.id, "rejected")}
+                            className="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Reject
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="p-6 text-center text-slate-500">No logs found matching your criteria.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
+
+            
+           {/* TAB 2: DELEGATED TASKS */}
+    {adminView === 'delegated' && (
+      <div className="space-y-6">
+        <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-6 shadow-sm text-slate-900">
+          <div className="border-b border-[#E6E2D6] pb-3 flex justify-between items-center">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+              <UserPlus className="w-4 h-4 text-orange-600" /> Delegate Task to Registered Employee
+            </h3>
+            <span className="text-xs text-slate-500">{profilesList.filter(p => p.role !== "deactivated").length} Active Team Members</span>
+          </div>
+
+          <form onSubmit={handleAssignTask} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">Assign To Employee *</label>
+              <select
+                value={assigneeId}
+                onChange={(e) => setAssigneeId(e.target.value)}
+                required
+                className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
+              >
+                <option value="">Select Employee...</option>
+                {profilesList.filter(p => p.role !== "deactivated").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {formatUserDisplay(p.email)} ({p.email || p.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">Department *</label>
+              <select
+                value={assignDept}
+                onChange={(e) => setAssignDept(e.target.value)}
+                className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
+              >
+                <option value="Publications & Testing">Publications & Testing</option>
+                <option value="DTP">DTP</option>
+              </select>
+            </div>
+
+            {assignDept === "Publications & Testing" && (
+              <div>
+                <label className="text-slate-700 block mb-1 font-medium">Task Category *</label>
+                <select
+                  value={assignCategory}
+                  onChange={(e) => setAssignCategory(e.target.value)}
+                  className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
+                >
+                  <option value="Question Formation">Question Formation</option>
+                  <option value="Content Creation / Theory Writing">Content Creation / Theory Writing</option>
+                  <option value="Proofing">Proofing</option>
+                  <option value="Solution Drafting">Solution Drafting</option>
+                  <option value="Translation">Translation</option>
+                  <option value="Review / Fact Check">Review / Fact Check</option>
+                </select>
               </div>
             )}
+
+            {assignDept === "Publications & Testing" && assignCategory === "Proofing" && (
+              <div>
+                <label className="text-slate-700 block mb-1 font-medium">Proofing Stage *</label>
+                <select
+                  value={assignStage}
+                  onChange={(e) => setAssignStage(e.target.value)}
+                  className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none cursor-pointer"
+                >
+                  <option value="Proof 1">Proof 1</option>
+                  <option value="Proof 2">Proof 2</option>
+                  <option value="Final Quality Check">Final Quality Check</option>
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">Target Quantity *</label>
+              <input
+                type="number"
+                min="1"
+                required
+                placeholder="e.g. 50"
+                value={assignQty}
+                onChange={(e) => setAssignQty(e.target.value)}
+                className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">Subject / Book Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. RRB Reasoning"
+                value={assignSubject}
+                onChange={(e) => setAssignSubject(e.target.value)}
+                className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-slate-700 block mb-1 font-medium">Topic / Chapter Name *</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. Coding Decoding Part 1"
+                value={assignTopic}
+                onChange={(e) => setAssignTopic(e.target.value)}
+                className="w-full bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg p-2.5 text-slate-900 outline-none"
+              />
+            </div>
+
+            <div className="md:col-span-3 flex justify-end">
+              <button
+                type="submit"
+                disabled={assigning}
+                className="px-6 py-2.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+              >
+                <Send className="w-3.5 h-3.5" />
+                {assigning ? "Assigning..." : "Assign Task"}
+              </button>
+            </div>
+          </form>
+
+          {/* Currently Delegated Tasks Table with Searchbar */}
+          <div className="border-t border-[#E6E2D6] pt-4">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-3">
+              <h4 className="text-xs font-semibold text-slate-800 flex items-center gap-2">
+                <Briefcase className="w-3.5 h-3.5 text-orange-600" /> Currently Delegated Tasks ({filteredAssignments.length})
+              </h4>
+              
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search employee or task..."
+                    value={searchDelegated}
+                    onChange={(e) => setSearchDelegated(e.target.value)}
+                    className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-[11px] text-slate-900 focus:border-orange-500 outline-none w-52"
+                  />
+                  {searchDelegated && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSearchDelegated("")} 
+                      className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {assignments.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAllAssignments}
+                    className="px-2.5 py-1 bg-rose-100 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-300 rounded text-[10px] font-semibold transition flex items-center gap-1 cursor-pointer shrink-0"
+                    title="Delete all delegated tasks"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Clear All Tasks
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-y-auto max-h-64 border border-[#E6E2D6] rounded-lg">
+              <table className="w-full text-left text-[11px] text-slate-800 border-collapse">
+                <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[9px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
+                  <tr>
+                    <th className="p-2.5 bg-[#F7F4EB]">Employee</th>
+                    <th className="p-2.5 bg-[#F7F4EB]">Topic / Book</th>
+                    <th className="p-2.5 text-center bg-[#F7F4EB]">Target Qty</th>
+                    <th className="p-2.5 text-center bg-[#F7F4EB]">Status</th>
+                    <th className="p-2.5 text-right bg-[#F7F4EB]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E6E2D6]">
+                  {filteredAssignments.map((a) => {
+                    const empEmail = profileEmailMap.get(String(a.assigned_to)) || a.assigned_to;
+
+                    return (
+                      <tr key={a.id} className="hover:bg-[#F7F4EB]/50">
+                        <td className="p-2.5">
+                          <span className="text-slate-900 font-medium block">
+                            {formatUserDisplay(empEmail)}
+                          </span>
+                          <span className="text-slate-500 text-[10px] font-mono">
+                            {String(empEmail).slice(0, 18)}...
+                          </span>
+                        </td>
+                        <td className="p-2.5">
+                          <span className="font-semibold text-slate-900">{a.topic_name}</span>
+                          <span className="text-slate-500 block text-[10px]">{a.subject_book} &bull; {a.task_category}</span>
+                        </td>
+                        <td className="p-2.5 text-center font-bold text-orange-600">{a.target_quantity}</td>
+                        <td className="p-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                            a.status === "completed" ? "bg-emerald-100 text-emerald-800 border border-emerald-300" : "bg-amber-100 text-amber-800 border border-amber-300"
+                          }`}>
+                            {a.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteSingleAssignment(a.id)}
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-slate-200 rounded transition cursor-pointer"
+                            title="Cancel and Delete Task"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredAssignments.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center text-slate-500">No delegated tasks match your search.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+           {/* TAB 3: REPORTS */}
+    {adminView === 'reports' && (
+      <div className="space-y-6">
+        <div className="bg-white border border-[#E6E2D6] rounded-xl p-6 space-y-6 shadow-sm text-slate-900">
+          <div className="flex items-center gap-3 border-b border-[#E6E2D6] pb-4">
+            <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+              <Download className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Advanced Operations Reporting & Export Hub</h3>
+              <p className="text-xs text-slate-500">Generate and download official CSV records for daily, monthly, or custom date ranges.</p>
+            </div>
+          </div>
+
+          <ReportingSection submissions={logs} />
+        </div>
+      </div>
+    )}
 
             {/* TAB 4: TEAM DIRECTORY */}
-            {adminView === 'team' && (
-              <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
-                <h3 className="text-sm font-semibold text-slate-900">Team Directory ({filteredTeamProfiles.length})</h3>
-                <div className="overflow-y-auto max-h-72 border border-[#E6E2D6] rounded-lg">
-                  <table className="w-full text-left text-xs text-slate-800">
-                    <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px]">
-                      <tr>
-                        <th className="p-3">Name</th>
-                        <th className="p-3">Email</th>
-                        <th className="p-3">Role</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E6E2D6]">
-                      {filteredTeamProfiles.map(p => (
-                        <tr key={p.id}>
-                          <td className="p-3 font-semibold">{formatUserDisplay(p.email)}</td>
-                          <td className="p-3 font-mono">{p.email}</td>
-                          <td className="p-3 uppercase font-bold">{p.role}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+    {adminView === 'team' && (
+      <div className="space-y-6">
+        <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 border-b border-[#E6E2D6] pb-3">
+            <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+              <Users className="w-4 h-4 text-orange-600" /> Team Directory & Employee Management ({filteredTeamProfiles.length})
+            </h3>
 
-            {/* TAB 5: TIMESHEET */}
-            {adminView === 'timesheet' && (
-              <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
-                <h3 className="text-sm font-semibold text-slate-900">Timesheet</h3>
-                <div className="overflow-x-auto max-h-96 border border-[#E6E2D6] rounded-lg">
-                  <table className="w-full text-left text-xs text-slate-800">
-                    <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px]">
-                      <tr>
-                        <th className="p-2.5 sticky left-0 bg-[#F7F4EB]">Employee</th>
-                        <th className="p-2.5 text-center">Total</th>
-                        {monthDays.map(d => <th key={d} className="p-2 text-center">{d}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#E6E2D6]">
-                      {filteredTimesheetData.map(row => (
-                        <tr key={row.userId}>
-                          <td className="p-2.5 sticky left-0 bg-white font-semibold">{formatUserDisplay(row.email)}</td>
-                          <td className="p-2.5 text-center font-bold text-orange-600">{row.monthTotalUnits}</td>
-                          {monthDays.map(d => (
-                            <td key={d} className="p-2 text-center font-mono">{row.dailyUnits[d] || "-"}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            {/* Working Team Searchbar */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search employee directory..."
+                value={searchTeam}
+                onChange={(e) => setSearchTeam(e.target.value)}
+                className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1 text-xs text-slate-900 focus:border-orange-500 outline-none w-56"
+              />
+              {searchTeam && (
+                <button 
+                  type="button" 
+                  onClick={() => setSearchTeam("")} 
+                  className="absolute right-2 top-1.5 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-y-auto max-h-72 border border-[#E6E2D6] rounded-lg">
+            <table className="w-full text-left text-xs text-slate-800 border-collapse">
+              <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 border-b border-[#E6E2D6] z-10">
+                <tr>
+                  <th className="p-3 bg-[#F7F4EB]">Employee Name</th>
+                  <th className="p-3 bg-[#F7F4EB]">Workspace Email</th>
+                  <th className="p-3 bg-[#F7F4EB]">Role</th>
+                  <th className="p-3 bg-[#F7F4EB]">Joined Date</th>
+                  <th className="p-3 text-right bg-[#F7F4EB]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E6E2D6]">
+                {filteredTeamProfiles.map((p) => {
+                  const isDeactivated = p.role === "deactivated";
+
+                  return (
+                    <tr key={p.id} className={`hover:bg-[#F7F4EB]/50 ${isDeactivated ? "opacity-60 bg-rose-50" : ""}`}>
+                      <td className="p-3 font-semibold text-slate-900 flex items-center gap-2">
+                        {formatUserDisplay(p.email)}
+                        {isDeactivated && (
+                          <span className="text-[9px] bg-rose-100 text-rose-800 border border-rose-300 px-1.5 py-0.5 rounded font-bold uppercase">
+                            Deactivated
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-cyan-800 font-mono text-[11px]">
+                        {p.email || "N/A"}
+                      </td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
+                          p.role === "admin" ? "bg-purple-100 text-purple-800 border border-purple-300" :
+                          isDeactivated ? "bg-rose-100 text-rose-800 border border-rose-300" :
+                          "bg-blue-100 text-blue-800 border border-blue-300"
+                        }`}>
+                          {p.role || "employee"}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-500 font-mono text-[11px]">
+                        {p.created_at ? p.created_at.slice(0, 10) : "N/A"}
+                      </td>
+                      <td className="p-3 text-right">
+                        {isDeactivated ? (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
+                            disabled={p.id === currentUser?.id}
+                            className="px-2.5 py-1 bg-emerald-100 hover:bg-emerald-600 disabled:opacity-30 text-emerald-900 hover:text-white border border-emerald-300 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                            title="Re-activate Employee Account"
+                          >
+                            <UserCheck2 className="w-3.5 h-3.5" />
+                            Activate Account
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleEmployeeStatus(p.id, p.email, p.role)}
+                            disabled={p.id === currentUser?.id}
+                            className="px-2.5 py-1 bg-amber-100 hover:bg-amber-600 disabled:opacity-30 text-amber-900 hover:text-white border border-amber-300 rounded text-[11px] font-semibold transition inline-flex items-center gap-1 cursor-pointer"
+                            title="Deactivate Employee Account"
+                          >
+                            <XCircle className="w-3.5 h-3.5" />
+                            Deactivate
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredTeamProfiles.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-slate-500">No employees found matching your search.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
+           
+{/* TAB 5: TIMESHEET */}
+    {adminView === 'timesheet' && (
+      <div className="space-y-6">
+        <div className="bg-white border border-[#E6E2D6] rounded-xl p-5 space-y-4 shadow-sm text-slate-900">
+          <div className="flex flex-col md:flex-row justify-between md:items-center gap-3 border-b border-[#E6E2D6] pb-4">
+            <div>
+              <h3 className="text-sm font-semibold flex items-center gap-2 text-slate-900">
+                <TableProperties className="w-4 h-4 text-orange-600" />
+                Monthly Master Timesheet (Performance Matrix)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Approved production units broken down by calendar days</p>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* Master Timesheet Searchbar */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search employee matrix..."
+                  value={searchTimesheet}
+                  onChange={(e) => setSearchTimesheet(e.target.value)}
+                  className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none w-52"
+                />
+                {searchTimesheet && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSearchTimesheet("")} 
+                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-700"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
               </div>
-            )}
+
+              <input
+                type="month"
+                value={selectedMonthFilter}
+                onChange={(e) => setSelectedMonthFilter(e.target.value)}
+                className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:border-orange-500 outline-none cursor-pointer"
+              />
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const exportMatrixRows = filteredTimesheetData.map((d) => {
+                    const rowObj: any = {
+                      Employee_Name: formatUserDisplay(d.email),
+                      Employee_Email: d.email,
+                      JoinDate: d.joinDate,
+                      TotalUnits: d.monthTotalUnits,
+                      DaysPresent: d.totalPresentDays,
+                      DailyAverage: d.dailyAvg,
+                    };
+                    monthDays.forEach((day) => {
+                      rowObj[`Day_${day}`] = d.dailyUnits[day] || 0;
+                    });
+                    return rowObj;
+                  });
+                  exportToCSV(`exampur_master_timesheet_${selectedMonthFilter}`, exportMatrixRows);
+                }}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-[#E6E2D6] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5 text-orange-600" />
+                Export Matrix
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto overflow-y-auto max-h-96 border border-[#E6E2D6] rounded-lg">
+            <table className="w-full text-left text-xs text-slate-800 border-collapse">
+              <thead className="bg-[#F7F4EB] text-slate-700 uppercase text-[10px] tracking-wider sticky top-0 z-30 border-b border-[#E6E2D6]">
+                <tr>
+                  <th className="p-2.5 sticky left-0 bg-[#F7F4EB] z-40 min-w-[200px]">Employee</th>
+                  <th className="p-2.5 text-center min-w-[70px] bg-[#F7F4EB]">Total</th>
+                  <th className="p-2.5 text-center min-w-[60px] bg-[#F7F4EB]">Present</th>
+                  <th className="p-2.5 text-center min-w-[60px] bg-[#F7F4EB]">Daily Avg</th>
+                  {monthDays.map((day) => (
+                    <th key={day} className="p-2 text-center min-w-[32px] bg-[#F7F4EB]">{day}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#E6E2D6]">
+                {filteredTimesheetData.map((row) => (
+                  <tr key={row.userId} className="hover:bg-[#F7F4EB]/50">
+                    <td className="p-2.5 sticky left-0 bg-white font-medium text-slate-900 z-20 border-r border-[#E6E2D6]">
+                      <div className="font-semibold text-slate-900">{formatUserDisplay(row.email)}</div>
+                      <div className="text-[10px] text-slate-500 font-mono">{row.email}</div>
+                    </td>
+                    <td className="p-2.5 text-center font-bold text-orange-600 bg-slate-50">{row.monthTotalUnits}</td>
+                    <td className="p-2.5 text-center text-slate-700 font-mono">{row.totalPresentDays}</td>
+                    <td className="p-2.5 text-center text-emerald-700 font-semibold font-mono">{row.dailyAvg}</td>
+                    {monthDays.map((day) => {
+                      const units = row.dailyUnits[day];
+                      return (
+                        <td key={day} className={`p-2 text-center text-[11px] font-mono ${units > 0 ? "text-slate-900 font-bold bg-[#F7F4EB]" : "text-slate-400"}`}>
+                          {units > 0 ? units : "-"}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+                {filteredTimesheetData.length === 0 && (
+                  <tr>
+                    <td colSpan={monthDays.length + 4} className="p-6 text-center text-slate-500">No timesheet records match your search.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )}
 
           </div>
         )}
@@ -1878,15 +2388,16 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
       return;
     }
 
-    const headers = ['Date', 'Employee Name', 'Workspace Email', 'Topic / Subject', 'Category', 'Quantity', 'Status'];
+    const headers = ['Date', 'Employee ID', 'Department', 'Category', 'Subject / Book', 'Topic Name', 'Quantity', 'Status'];
     const rows = dataToExport.map(item => [
-      item.date || '',
-      `"${item.employeeName || ''}"`,
-      item.employeeEmail || '',
-      `"${item.topic || ''}"`,
-      `"${item.category || ''}"`,
+      item.created_at ? new Date(item.created_at).toLocaleDateString("en-CA") : '',
+      item.user_id || '',
+      `"${item.department || ''}"`,
+      `"${item.task_category || ''}"`,
+      `"${item.subject_book || ''}"`,
+      `"${item.topic_name || ''}"`,
       item.quantity || 0,
-      item.status || ''
+      item.status || 'pending'
     ]);
 
     const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -1909,7 +2420,7 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
         alert('Please select a target date for the daily report.');
         return;
       }
-      filtered = filtered.filter(item => item.date === singleDate);
+      filtered = filtered.filter(item => item.created_at && item.created_at.slice(0, 10) === singleDate);
       downloadCSV(filtered, `Daily_Report_${singleDate}`);
     } 
     else if (reportType === 'monthly') {
@@ -1917,7 +2428,7 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
         alert('Please select a target month (YYYY-MM).');
         return;
       }
-      filtered = filtered.filter(item => item.date && item.date.startsWith(selectedMonth));
+      filtered = filtered.filter(item => item.created_at && item.created_at.slice(0, 7) === selectedMonth);
       downloadCSV(filtered, `Monthly_Report_${selectedMonth}`);
     } 
     else if (reportType === 'custom') {
@@ -1925,59 +2436,52 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
         alert('Please select both From and To dates.');
         return;
       }
-      filtered = filtered.filter(item => item.date >= fromDate && item.date <= toDate);
+      filtered = filtered.filter(item => {
+        const itemDate = item.created_at ? item.created_at.slice(0, 10) : '';
+        return itemDate >= fromDate && itemDate <= toDate;
+      });
       downloadCSV(filtered, `Custom_Range_Report_${fromDate}_to_${toDate}`);
     }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mb-6 shadow-xl">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 bg-orange-500/20 text-orange-500 rounded-lg">
-          <FileSpreadsheet className="w-5 h-5" />
-        </div>
+    <div className="bg-[#FDFBF7] border border-[#E6E2D6] rounded-xl p-5 shadow-sm space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
         <div>
-          <h3 className="text-sm font-bold text-white">Advanced Operations Reporting (Daily, Monthly & Custom Sheets)</h3>
-          <p className="text-xs text-slate-400">Generate and download official CSV sheets for management review.</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-        <div>
-          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-            Report Type
+          <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+            Report Type *
           </label>
           <select
             value={reportType}
             onChange={(e) => setReportType(e.target.value as any)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+            className="w-full bg-white border border-[#E6E2D6] rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500 cursor-pointer"
           >
             <option value="daily">Daily Report</option>
             <option value="monthly">Monthly Report</option>
-            <option value="custom">Custom From-To Date</option>
+            <option value="custom">Custom From-To Date Range</option>
           </select>
         </div>
 
         {reportType === 'daily' && (
           <div className="md:col-span-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Select Date *</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Select Date *</label>
             <input
               type="date"
               value={singleDate}
               onChange={(e) => setSingleDate(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+              className="w-full bg-white border border-[#E6E2D6] rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
             />
           </div>
         )}
 
         {reportType === 'monthly' && (
           <div className="md:col-span-2">
-            <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Select Month *</label>
+            <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">Select Month *</label>
             <input
               type="month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+              className="w-full bg-white border border-[#E6E2D6] rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
             />
           </div>
         )}
@@ -1985,33 +2489,33 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
         {reportType === 'custom' && (
           <div className="md:col-span-2 grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">From Date *</label>
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">From Date *</label>
               <input
                 type="date"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                className="w-full bg-white border border-[#E6E2D6] rounded-lg px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">To Date *</label>
+              <label className="block text-[10px] font-bold text-slate-700 uppercase tracking-wider mb-1">To Date *</label>
               <input
                 type="date"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-orange-500"
+                className="w-full bg-white border border-[#E6E2D6] rounded-lg px-2.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-orange-500"
               />
             </div>
           </div>
         )}
 
         <div>
-         <button
+          <button
             type="button"
             onClick={handleGenerateReport}
-            className="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold text-xs py-2.5 px-3 rounded-lg transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold text-xs py-2.5 px-3 rounded-lg transition shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" /> Download Sheet
+            <Download className="w-3.5 h-3.5" /> Download Sheet (.csv)
           </button>
         </div>
       </div>
