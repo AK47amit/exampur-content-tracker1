@@ -942,10 +942,10 @@ export default function PortalComponent() {
   return (
  
    
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex relative w-full">
+    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'} flex relative w-full transition-colors duration-300`}>
       
       {/* Left Sliding Panel / Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-5 border-b border-slate-800 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <button 
