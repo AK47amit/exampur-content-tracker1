@@ -60,6 +60,7 @@ export default function PortalComponent() {
 
   // Active Tasks Modal & Flash Alert State (Employee)
   const [showActiveTasksModal, setShowActiveTasksModal] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [previewModalLog, setPreviewModalLog] = useState<any | null>(null);
   const [flashAlert, setFlashAlert] = useState<{
     show: boolean;
@@ -937,8 +938,35 @@ export default function PortalComponent() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex relative w-full">
       
+      {/* Left Sliding Panel / Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
+        <div className="p-5 border-b border-slate-800 flex justify-between items-center">
+          <span className="font-extrabold text-base tracking-wide text-white">Exampur Ops</span>
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-white">✕</button>
+        </div>
+        
+        <nav className="p-4 space-y-2 text-sm">
+          <a href="#" className="block px-3 py-2 rounded-lg bg-red-600 text-white font-medium">Dashboard</a>
+          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Content Tracker</a>
+          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Task Delegation</a>
+          <a href="#" className="block px-3 py-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">Performance Matrix</a>
+        </nav>
+      </div>
+
+      {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10">
+        
+        {/* Mobile Menu Toggle Bar */}
+        <div className="mb-6 flex items-center md:hidden">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-200 text-xs font-semibold"
+          >
+            ☰ Menu
+          </button>
+        </div>
 
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
       {userRole !== "admin" && flashAlert && flashAlert.show && (
@@ -1007,7 +1035,7 @@ export default function PortalComponent() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-8 w-full">
         
         {/* Header with Clean Display Name */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-6 gap-4">
@@ -1061,7 +1089,7 @@ export default function PortalComponent() {
         {/* ================= CONDITIONAL WORKSPACE ROUTING ================= */}
         {userRole !== "admin" ? (
           /* ================= EMPLOYEE VIEW ================= */
-          <div className="space-y-8 max-w-4xl mx-auto">
+          <div className="space-y-8 max-w-4xl mx-auto w-full">
             
             {/* Employee Operational KPI Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -1600,8 +1628,8 @@ export default function PortalComponent() {
               </div>
             </div>
 
-{/* ADVANCED REPORTING & EXPORT MODULE FOR MANAGEMENT */}
-        <ReportingSection submissions={logs} />
+            {/* ADVANCED REPORTING & EXPORT MODULE FOR MANAGEMENT */}
+            <ReportingSection submissions={logs} />
 
             {/* TEAM DIRECTORY & EMPLOYEE MANAGEMENT WINDOW */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
@@ -1710,7 +1738,7 @@ export default function PortalComponent() {
               </div>
             </div>
 
-            {/* Daily Queue Filter Bar (Clean - No Searchbar) */}
+            {/* Daily Queue Filter Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-4 rounded-xl">
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-2">
@@ -2251,9 +2279,11 @@ export default function PortalComponent() {
         )}
 
       </div>
-    </main>
+    </div>
+    </div>
   );
 }
+
 // Advanced Reporting Component for Excel/CSV Sheet Exports (Daily, Monthly & Custom Date Range)
 function ReportingSection({ submissions }: { submissions: any[] }) {
   const [reportType, setReportType] = useState<'daily' | 'monthly' | 'custom'>('daily');
@@ -2408,3 +2438,4 @@ function ReportingSection({ submissions }: { submissions: any[] }) {
     </div>
   );
 }
+  
