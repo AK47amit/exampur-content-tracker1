@@ -942,32 +942,24 @@ export default function PortalComponent() {
   return (
  
    
-    <div className={`min-h-screen ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-900'} flex relative w-full transition-colors duration-300`}>
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex relative w-full transition-colors duration-300">
       
       {/* Left Sliding Panel / Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-2xl'} border-r transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-5 border-b border-slate-800 flex justify-between items-center">
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-2xl transform transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-5 border-b border-slate-200 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsSidebarOpen(false)} 
-              className="md:hidden text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800/60 cursor-pointer"
+              className="md:hidden text-slate-500 hover:text-slate-900 p-1 rounded-lg bg-slate-100 cursor-pointer"
               title="Close Sidebar"
             >
               ✕
             </button>
-            <span className="font-extrabold text-base tracking-wide text-white">Exampur Ops</span>
+            <span className="font-extrabold text-base tracking-wide text-slate-900">Exampur Ops</span>
           </div>
-          
-          {/* Circular Light / Dark Mode Toggle Button */}
-          <button
-            type="button"
-            onClick={() => setDarkMode(!darkMode)}
-            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-amber-400 flex items-center justify-center transition shadow-md cursor-pointer border border-slate-700"
-            title="Toggle Light/Dark Mode"
-          >
-            {darkMode ? "🌙" : "☀️"}
-          </button>
         </div>
+          
+        
         
         <nav className="p-4 space-y-2 text-sm">
           {userRole === "admin" ? (
@@ -1000,36 +992,36 @@ export default function PortalComponent() {
         </nav>
       </div>
 
-      {/* Main Content Area Wrapper */}
-     <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full">
+     {/* Main Content Area Wrapper */}
+      <div className="flex-1 flex flex-col min-w-0 p-6 md:p-10 transition-all duration-300 w-full">
         
-        {/* Universal Sidebar Slider / Hamburger Toggle Bar */}
+        {/* Persistent Sidebar Toggle Button */}
         <div className="mb-6 flex items-center">
           <button 
-          type="button"
+            type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-           className={`px-3.5 py-2 rounded-lg ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 shadow-sm'} border text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-md`}
->
+            className="px-3.5 py-2 rounded-lg bg-white border border-slate-300 text-slate-800 hover:bg-slate-100 text-xs font-semibold transition flex items-center gap-2 cursor-pointer shadow-sm"
+          >
             <span className="text-base">☰</span> Toggle Sidebar Panel
           </button>
         </div>
 
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
-      {userRole !== "admin" && flashAlert && flashAlert.show && (
+      {userRole !== "admin" && flashAlert && flashAlert?.show && (
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
           <div className={`p-4 rounded-xl shadow-2xl border flex items-start gap-3 backdrop-blur-md ${
-            flashAlert.type === "rejected"
+            flashAlert?.type === "rejected"
               ? "bg-rose-950/90 border-rose-700 text-rose-200"
               : "bg-amber-950/90 border-amber-700 text-amber-200"
           }`}>
-            {flashAlert.type === "rejected" ? (
+            {flashAlert?.type === "rejected" ? (
               <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
             ) : (
               <BellRing className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-bounce" />
             )}
             <div className="flex-1 text-xs">
-              <p className="font-bold text-white mb-0.5">{flashAlert.title}</p>
-              <p className="text-slate-300 leading-relaxed">{flashAlert.message}</p>
+              <p className="font-bold text-white mb-0.5">{flashAlert?.title}</p>
+              <p className="text-slate-300 leading-relaxed">{flashAlert?.message}</p>
             </div>
             <button
               onClick={() => setFlashAlert(null)}
@@ -1042,7 +1034,7 @@ export default function PortalComponent() {
       )}
 
       {/* 2. Real-time Inbound Submission Flash Toast (Strictly for Manager) */}
-      {userRole === "admin" && managerToast && managerToast.show && (
+      {userRole === "admin" && managerToast && managerToast?.show && (
         <div className="fixed bottom-6 right-6 z-50 max-w-md w-full animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="p-5 rounded-2xl shadow-2xl border bg-slate-900/95 border-amber-500/80 text-white flex items-start gap-4 backdrop-blur-xl ring-2 ring-amber-500/30">
             <div className="p-3 bg-amber-950/80 text-amber-400 border border-amber-800/80 rounded-xl shrink-0 mt-0.5">
@@ -1056,17 +1048,17 @@ export default function PortalComponent() {
                 </p>
               </div>
               <p className="text-white font-semibold text-xs">
-                {formatUserDisplay(managerToast.employeeEmail)}
+                {formatUserDisplay(managerToast?.employeeEmail)}
               </p>
               <p className="text-cyan-300 font-mono text-[11px] break-all">
-                {managerToast.employeeEmail}
+                {managerToast?.employeeEmail}
               </p>
               <div className="pt-1 text-slate-300 flex items-center gap-2">
-                <span>Status: <b className="text-white">{managerToast.topic}</b></span>
-                {managerToast.quantity > 0 && (
+                <span>Status: <b className="text-white">{managerToast?.topic}</b></span>
+                {managerToast?.quantity > 0 && (
                   <>
                     <span>&bull;</span>
-                    <span className="text-orange-400 font-bold">{managerToast.quantity} Qty</span>
+                    <span className="text-orange-400 font-bold">{managerToast?.quantity} Qty</span>
                   </>
                 )}
               </div>
