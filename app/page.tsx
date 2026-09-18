@@ -670,28 +670,7 @@ export default function PortalComponent() {
       alert("Failed to assign task: " + error.message);
     } else {
       alert("Task assigned successfully to the employee!");
-      // Email notification dispatch block
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('email, full_name')
-            .eq('id', assigneeId)
-            .single();
-
-          if (profileData && profileData.email) {
-            await fetch('/api/send-mail', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                email: profileData.email,
-                subject: 'New Operational Task Assigned - Exampur Portal',
-                message: `Hello ${profileData.full_name || 'Employee'},\n\nA new operational task has been assigned to you:\n\nTopic: ${assignTopic}\nCategory: ${taskCategory}\nTarget Quantity: ${assignQty}\n\nPlease check your dashboard and complete it on time.\n\nRegards,\nExampur Management`
-              })
-            });
-          }
-        } catch (emailErr) {
-          console.error("Email notification error:", emailErr);
-        }
+      
       setAssignSubject("");
       setAssignTopic("");
       setAssignQty("");
@@ -960,6 +939,15 @@ export default function PortalComponent() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 relative">
       
+{/* Exampur Logo & Branding Header */}
+<div className="flex items-center gap-3 mb-6 bg-slate-900 p-4 rounded-xl border border-slate-800 shadow-sm">
+  <div className="bg-red-600 text-white font-bold px-3 py-1.5 rounded-lg text-sm shadow-sm">EX</div>
+  <div>
+    <h1 className="font-bold text-base leading-tight text-white">Exampur</h1>
+    <p className="text-xs text-slate-400">Ops Portal & Content Tracker</p>
+  </div>
+</div>
+
       {/* 1. Smart Login Reminder Flash Toast (Strictly for Employee) */}
       {userRole !== "admin" && flashAlert && flashAlert.show && (
         <div className="fixed top-6 right-6 z-50 max-w-sm w-full animate-in slide-in-from-top-4 fade-in duration-300">
