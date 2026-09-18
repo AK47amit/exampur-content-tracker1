@@ -974,13 +974,7 @@ export default function PortalComponent() {
       Verification Queue
     </button>
 
-    <button
-  type="button"
-  onClick={() => setAdminView('reset-requests')}
-  className={`w-full text-left px-3.5 py-2.5 rounded-xl font-medium transition flex items-center gap-2.5 cursor-pointer ${adminView === 'reset-requests' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-700 hover:bg-[#F7F4EB]'}`}
->
-  <KeyRound className="w-4 h-4" /> Reset Requests
-</button>
+   
 
     <button 
       onClick={() => { setAdminView('delegated'); setIsSidebarOpen(false); }} 
@@ -988,6 +982,7 @@ export default function PortalComponent() {
     >
       Delegated Tasks
     </button>
+    
 
 
     <button 
